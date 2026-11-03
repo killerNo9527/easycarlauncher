@@ -147,7 +147,7 @@ echo "sdk.dir=/path/to/android-sdk" > local.properties
 
 ### 音乐
 
-装 md3Music（本项目不附带）并在它的设置里**打开「歌词转发」**。不开的话桌面只能显示歌名和封面。
+装 md3Music（本项目不附带）https://github.com/zzyoxml/md3Music 并在它的设置里**打开「歌词转发->lyricinfo」**。不开的话桌面只能显示歌名和封面。
 
 ### 地图
 
