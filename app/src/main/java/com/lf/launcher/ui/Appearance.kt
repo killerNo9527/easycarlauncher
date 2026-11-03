@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.app.AppCompatActivity
+import com.lf.launcher.map.AmapDayNight
 import com.lf.launcher.settings.Defaults
 import com.lf.launcher.settings.Keys
 import com.lf.launcher.settings.SettingsStore
@@ -46,6 +47,19 @@ object Appearance {
     fun isNight(context: Context): Boolean = isNight(context.resources.configuration)
 
     /**
+     * 当前"实际应该显示"的是日间还是夜间。
+     *
+     * 固定模式直接按设置取值，跟随系统才去问 uiMode。给地图日夜联动用——
+     * 那边需要一个确定答案，不能拿 `isNight()` 直接判断（固定日间时
+     * Context 的 uiMode 可能还是系统那一套）。
+     */
+    fun resolveNight(context: Context): Boolean = when (mode()) {
+        DAY -> false
+        NIGHT -> true
+        else -> isNight(context)
+    }
+
+    /**
      * 按当前设置给 Context 套一层 uiMode 覆盖。
      * 跟随系统时原样返回，交给系统决定。
      */
@@ -71,6 +85,9 @@ object Appearance {
         // 这里再读 mode() 一定等于 value，判断会永远成立、界面永远不重建
         SettingsStore.setString(Keys.DAY_NIGHT, value)
         syncDelegate()
+        // 桌面配色定了，顺手把高德也切过去，省得用户还要进高德再点一次。
+        // 开关关着时 apply() 内部直接返回 false，不会做任何事
+        AmapDayNight.apply(activity, resolveNight(activity))
         activity.recreate()
     }
 
@@ -128,7 +145,13 @@ abstract class ThemedActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         // 设置页里改了模式：桌面还留在返回栈里没被重建，回到前台补一次
-        if (Appearance.mode() != appliedMode) recreate()
+        if (Appearance.mode() != appliedMode) {
+            recreate()
+        } else {
+            // 从后台/全屏导航回来补推一次：这期间高德可能自己按大灯或日出日落改回了
+            // 日间，桌面这边不复位就对不上了。AmapDayNight 内部会去重，不会反复发
+            AmapDayNight.apply(this, Appearance.resolveNight(this))
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -137,6 +160,9 @@ abstract class ThemedActivity : AppCompatActivity() {
         if (night == lastNight) return
         lastNight = night
         // 固定日间/夜间时不跟随系统，配置变化与我们无关
-        if (Appearance.mode() == Appearance.FOLLOW) recreate()
+        if (Appearance.mode() == Appearance.FOLLOW) {
+            AmapDayNight.apply(this, night)
+            recreate()
+        }
     }
 }

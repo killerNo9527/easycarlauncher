@@ -38,9 +38,9 @@
 >
 > **更新（0.9.12-m22）**：均衡器页支持**双击推子输入数值**（31 段挤在一起时靠拖对不准，
 > 双击弹深色输入框，带归零）；弹窗固定深色主题（`EqDialogTheme` + `bg_eq_dialog`）。
-> 同时把 31 段引擎抽成**独立 App CarEQ**（独立工程 eqapp（现为单独的 CarEQ 仓库），包名 `com.lf.careq`，
+> 同时把 31 段引擎抽成**独立 App FreeBand**（独立工程 eqapp（现为单独的 FreeBand 仓库），包名 `com.lf.freeband`，
 > 零第三方依赖），带前台服务保活 —— 因为 `AudioEffect` 绑创建它的进程，独立版没有 HOME 待遇。
-> 交付 `CarEQ-1.1.apk`。**桌面版与独立版同时开会抢 session 0，只开一个。**
+> 交付 `FreeBand-1.1.apk`。**桌面版与独立版同时开会抢 session 0，只开一个。**
 >
 > **更新（0.9.11-m21）**：**桌面有了真的 31 段全局均衡器**（`DynamicsProcessing` 挂 session 0）。
 > 关键在于之前的「-5 失败」是我把 `VARIANT_FAVOR_FREQUENCY_RESOLUTION(=0)` /

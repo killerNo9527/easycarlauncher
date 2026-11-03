@@ -156,6 +156,12 @@ object SettingsSpec {
             ),
             default = Defaults.MAP_BORDER_COLOR,
         )
+        items += SettingItem.SwitchItem(
+            Keys.AMAP_DAY_NIGHT, "高德日夜跟随桌面",
+            "桌面切到夜间时，用高德官方广播协议把它也切成黑夜配色（深底亮路网）。" +
+                "需要高德车机版 1.4.2 以上；手机版或未适配的改版高德不会响应",
+            default = Defaults.AMAP_DAY_NIGHT,
+        )
         items += SettingItem.Section("天气")
         items += SettingItem.SwitchItem(
             Keys.CARD_WEATHER, "天气卡",

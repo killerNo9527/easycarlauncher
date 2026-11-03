@@ -13,10 +13,13 @@ object SettingsStore {
         if (sp == null) {
             val prefs = context.applicationContext.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
             sp = prefs
-            // map_mode 已废弃（地图只剩广播这一条路），把旧值清掉，避免以后误读
-            if (prefs.contains(Keys.MAP_MODE)) {
-                prefs.edit().remove(Keys.MAP_MODE).apply()
-            }
+            // 两项已废弃，把旧值清掉，避免以后误读：
+            // - map_mode：地图只剩广播这一条路
+            // - map_night_dim：高德现在能真正切成夜间配色，压暗那层已经删了
+            val e = prefs.edit()
+            if (prefs.contains(Keys.MAP_MODE)) e.remove(Keys.MAP_MODE)
+            e.remove("map_night_dim")
+            e.apply()
         }
     }
 
@@ -91,12 +94,14 @@ object Keys {
     const val MAP_APP_LABEL = "map_app_label"             // 仅用于设置页显示
     const val MAP_BORDER = "map_border"                   // 是否绘制地图区边框
     const val MAP_BORDER_COLOR = "map_border_color"
+    const val AMAP_DAY_NIGHT = "amap_day_night"           // 用高德官方广播协议同步日夜
     const val AUTO_MAP_ON_OPEN = "auto_map_on_open"       // 打开桌面时自动拉起地图再切回
 
     // 均衡器（全局，31 段）
     const val EQ_ENABLED = "eq_enabled"                   // 总开关
     const val EQ_PRESET = "eq_preset"                     // flat / car / custom
     const val EQ_GAINS = "eq_gains"                       // 31 个增益，逗号分隔
+    const val EQ_FREQS = "eq_freqs"                       // 31 个中心频率，逗号分隔（可自定义）
     const val EQ_PREAMP = "eq_preamp"                     // 前级增益 dB（<=0）
 }
 
@@ -109,4 +114,7 @@ object Defaults {
     const val DAY_NIGHT = "system"
 
     const val MAP_BORDER_COLOR = "#4C8DFF"
+
+    /** 高德日夜跟随桌面（用 AmapAuto 标准广播协议推 KEY_TYPE=10048） */
+    const val AMAP_DAY_NIGHT = true
 }

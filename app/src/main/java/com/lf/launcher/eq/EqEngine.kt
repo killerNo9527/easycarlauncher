@@ -47,15 +47,24 @@ object EqEngine {
      *
      * @return true 表示 effect 已建好且状态已下发；false 看 [lastError]
      */
-    fun apply(gains: FloatArray, enabled: Boolean, preampDb: Float = 0f): Boolean {
+    fun apply(
+        gains: FloatArray,
+        enabled: Boolean,
+        preampDb: Float = 0f,
+        freqs: FloatArray = EqPresets.FREQS,
+    ): Boolean {
         val eq = ensure() ?: return false
         return try {
-            eq.applyProfile(EqPresets.profile(gains, preampDb = preampDb))
+            eq.applyProfile(EqPresets.profile(gains, freqs, preampDb = preampDb))
             eq.setEnabled(enabled)
             remember(gains)
             active = enabled
             lastError = null
-            Log.i(TAG, "apply ok enabled=$enabled bands=${gains.size} preamp=$preampDb")
+            Log.i(
+                TAG,
+                "apply ok enabled=$enabled bands=${gains.size} preamp=$preampDb " +
+                    "freqs=${if (EqPresets.isDefaultFreqs(freqs)) "default" else "custom"}",
+            )
             true
         } catch (t: Throwable) {
             lastError = "写入失败：${t.javaClass.simpleName} ${t.message ?: ""}"

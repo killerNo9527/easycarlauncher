@@ -108,6 +108,14 @@
             style="@style/EqChip"
             android:text="自定义" />
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="双击推子改增益 · 点频点数改频率"
+            android:textColor="#5D6673"
+            android:textSize="12sp" />
+
         <Space
             android:layout_width="0dp"
             android:layout_height="1dp"
@@ -138,5 +146,10 @@
             style="@style/EqChip"
             android:layout_marginStart="14dp"
             android:text="全部归零" />
+
+        <TextView
+            android:id="@+id/eq_freq_reset"
+            style="@style/EqChip"
+            android:text="标准频点" />
     </LinearLayout>
 </LinearLayout>

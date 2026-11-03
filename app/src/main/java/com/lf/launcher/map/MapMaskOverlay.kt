@@ -90,7 +90,12 @@ object MapMaskOverlay {
      *
      * @param radiusPx 圆角半径，直接给 `home_card_corner_radius` 的像素值
      */
-    fun show(ctx: Context, rect: Rect, radiusPx: Float, background: List<View>) {
+    fun show(
+        ctx: Context,
+        rect: Rect,
+        radiusPx: Float,
+        background: List<View>,
+    ) {
         if (rect.width() <= 0 || rect.height() <= 0) return
         // ctx 必须是 Activity 的 Context：固定日间/夜间时 uiMode 覆盖只挂在它身上，
         // 用 applicationContext 取 drawable 会拿到系统默认那一套颜色

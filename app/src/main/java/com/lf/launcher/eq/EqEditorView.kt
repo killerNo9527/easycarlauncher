@@ -19,7 +19,11 @@ import kotlin.math.log10
 import kotlin.math.pow
 
 /**
- * 均衡器编辑区：上半部频响曲线，下半部 31 段竖推子（可直接拖）。
+ * 均衡器编辑区：上半部频响曲线，中间 31 段竖推子（可直接拖），底部一行频点标签（可点改）。
+ *
+ * 频点可改是这套方案的核心能力：`DynamicsProcessing.EqBand` 的 `cutoffFrequency` 由
+ * 调用方给定，所以 31 个中心频率能任意摆（数量固定 31，换数量要重建 effect）。
+ * 标签行同时承担"告诉我现在每段在哪"和"点一下就能改"两个职责。
  *
  * 为什么不复用 `EqCurve.curve()`：它对每个采样点都会把 31 个频段的 biquad 系数重算一遍
  * （128 × 31 次 sin/cos/pow），拖动时明显掉帧。这里每帧只算 31 次系数，采样点复用，
@@ -51,12 +55,27 @@ class EqEditorView @JvmOverloads constructor(
         private val BAR_NEG = Color.parseColor("#E8734A")
         private val LABEL = Color.parseColor("#8A929E")
         private val ZERO_LINE = Color.parseColor("#4A5361")
+        /** 频点被改过时标签用高亮色，一眼能看出哪几段不是默认位置 */
+        private val FREQ_EDITED = Color.parseColor("#35C6F4")
     }
 
-    /** 31 段增益（dB），与 [EqPresets.FREQS] 对齐 */
+    /** 31 段增益（dB），与 [freqs] 一一对应 */
     var gains: FloatArray = FloatArray(EqPresets.BAND_COUNT)
         set(value) {
             field = value.copyOf()
+            rebuild()
+            invalidate()
+        }
+
+    /**
+     * 31 段中心频率（Hz），缺省 1/3 倍频程网格。
+     *
+     * 写入会过 [EqPresets.sanitizeFreqs]：数量不对、乱序、超出 20Hz~20kHz 都会被修正，
+     * 因为非法频点会让 `SystemEq` 算出错误的 cutoff 上边界。
+     */
+    var freqs: FloatArray = EqPresets.FREQS.copyOf()
+        set(value) {
+            field = EqPresets.sanitizeFreqs(value)
             rebuild()
             invalidate()
         }
@@ -75,10 +94,19 @@ class EqEditorView @JvmOverloads constructor(
      */
     var onRequestInput: ((index: Int) -> Unit)? = null
 
+    /** 点底部频点标签时回调，外面弹「改这个频段的中心频率」 */
+    var onRequestFreqInput: ((index: Int) -> Unit)? = null
+
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = LABEL
         textSize = 11f * resources.displayMetrics.scaledDensity
+    }
+    /** 频点标签专用：居中、字号更小，31 个挤一行放得下 */
+    private val freqPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = LABEL
+        textSize = 10f * resources.displayMetrics.scaledDensity
+        textAlign = Paint.Align.CENTER
     }
     private val curvePath = Path()
     private val fillPath = Path()
@@ -93,6 +121,8 @@ class EqEditorView @JvmOverloads constructor(
     private var slotWidth = 0f
     private var centerY = 0f
     private var halfHeight = 0f
+    private var freqRowTop = 0f
+    private var freqRowHeight = 0f
 
     // 双击识别：不用 GestureDetector，因为它会和拖动抢事件；这里自己判「短按 + 位移小于 slop」。
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
@@ -100,6 +130,7 @@ class EqEditorView @JvmOverloads constructor(
     private var downY = 0f
     private var downAt = 0L
     private var gainBeforeTouch = 0f
+    private var freqTouchIndex = -1
     private var lastTapIndex = -1
     private var lastTapAt = 0L
 
@@ -110,24 +141,30 @@ class EqEditorView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        val padH = 16f * resources.displayMetrics.density
+        val density = resources.displayMetrics.density
+        val padH = 16f * density
         barLeft = padH
-        slotWidth = (w - padH * 2) / EqPresets.BAND_COUNT
+        slotWidth = (w - padH * 2) / freqs.size
         curveBottom = h * CURVE_RATIO
-        barRegionTop = curveBottom + 6f * resources.displayMetrics.density
-        barRegionHeight = h - barRegionTop - 8f * resources.displayMetrics.density
+        barRegionTop = curveBottom + 6f * density
+        // 底部留一行频点标签：没有它就看不出每段当前在哪，更没地方改
+        freqRowHeight = freqPaint.textSize + 8f * density
+        barRegionHeight = (h - barRegionTop - 8f * density - freqRowHeight).coerceAtLeast(12f * density)
         centerY = barRegionTop + barRegionHeight / 2f
-        halfHeight = barRegionHeight / 2f - 6f * resources.displayMetrics.density
+        halfHeight = barRegionHeight / 2f - 6f * density
+        freqRowTop = barRegionTop + barRegionHeight + 4f * density
         rebuild()
     }
 
     /** 只重算系数与曲线，不触发回调 */
     private fun rebuild() {
-        val coefs = ArrayList<Biquad>(EqPresets.BAND_COUNT)
-        for (i in 0 until EqPresets.BAND_COUNT) {
+        val n = freqs.size
+        val coefs = ArrayList<Biquad>(n)
+        for (i in 0 until n) {
             val g = gains.getOrElse(i) { 0f }
             if (abs(g) < 0.02f) continue
-            coefs += Biquad.design(BandType.PEAK, SAMPLE_RATE, EqPresets.FREQS[i], 4.33f, g)
+            // Q 跟着频点间距走：默认网格约 4.33，把某段挪走后曲线会相应变宽/变窄
+            coefs += Biquad.design(BandType.PEAK, SAMPLE_RATE, freqs[i], EqPresets.bandQ(freqs, i), g)
         }
         val lo = log10(20.0)
         val hi = log10(20000.0)
@@ -233,7 +270,7 @@ class EqEditorView @JvmOverloads constructor(
         val radius = 2f * density
 
         paint.style = Paint.Style.FILL
-        for (i in 0 until EqPresets.BAND_COUNT) {
+        for (i in freqs.indices) {
             val cx = barLeft + slotWidth * (i + 0.5f)
             val left = cx - barW / 2f
             // 轨道
@@ -270,15 +307,38 @@ class EqEditorView @JvmOverloads constructor(
 
         // 拖动时的数值气泡：31 段挤在一起，±2dB 只有十几像素，
         // 光看柱子读不出数，必须给一个数字回显。
-        if (dragIndex in 0 until EqPresets.BAND_COUNT) {
+        if (dragIndex in freqs.indices) {
             drawDragBubble(canvas, dragIndex)
+        }
+
+        drawFreqRow(canvas)
+    }
+
+    /**
+     * 底部频点标签行：每段一个中心频率，点一下就能改。
+     *
+     * 被改过的段用高亮色，和默认 1/3 倍频程布局区分开——否则用户看不出
+     * "我到底动过没有"，而这一行正是整套自定义频点能力的可见凭据。
+     */
+    private fun drawFreqRow(canvas: Canvas) {
+        if (slotWidth <= 0f) return
+        val baselineY = freqRowTop + freqPaint.textSize
+        for (i in freqs.indices) {
+            val cx = barLeft + slotWidth * (i + 0.5f)
+            val f = freqs[i]
+            freqPaint.color = when {
+                i == freqTouchIndex || i == dragIndex -> Color.WHITE
+                abs(f - EqPresets.FREQS[i]) > 0.05f -> FREQ_EDITED
+                else -> LABEL
+            }
+            canvas.drawText(EqPresets.freqLabel(f), cx, baselineY, freqPaint)
         }
     }
 
     private fun drawDragBubble(canvas: Canvas, index: Int) {
         val density = resources.displayMetrics.density
-        val f = EqPresets.FREQS[index]
-        val fLabel = if (f >= 1000f) String.format(java.util.Locale.US, "%.0fk", f / 1000f) else "${f.toInt()}"
+        val f = freqs.getOrElse(index) { EqPresets.FREQS[index] }
+        val fLabel = EqPresets.freqLabel(f)
         val g = gains.getOrElse(index) { 0f }
         val label = String.format(java.util.Locale.US, "%sHz  %+.1f dB", fLabel, g)
 
@@ -319,9 +379,18 @@ class EqEditorView @JvmOverloads constructor(
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (slotWidth <= 0f) return false
+        val density = resources.displayMetrics.density
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                if (event.y < curveBottom - 6f * resources.displayMetrics.density) return false
+                // 底部频点行优先：那里是「改频率」，不是推子，所以只认单击不认拖动
+                if (freqRowHeight > 0f && event.y >= freqRowTop - 2f * density) {
+                    freqTouchIndex = indexAt(event.x)
+                    downX = event.x
+                    downY = event.y
+                    invalidate()
+                    return true
+                }
+                if (event.y < curveBottom - 6f * density) return false
                 downX = event.x
                 downY = event.y
                 downAt = event.eventTime
@@ -331,12 +400,25 @@ class EqEditorView @JvmOverloads constructor(
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                if (event.y < curveBottom - 6f * resources.displayMetrics.density) return false
+                if (freqTouchIndex >= 0) return true
+                if (event.y < curveBottom - 6f * density) return false
                 if (dragIndex < 0) return false
                 setGainFromY(event.y)
                 return true
             }
             MotionEvent.ACTION_UP -> {
+                if (freqTouchIndex >= 0) {
+                    val idx = freqTouchIndex
+                    freqTouchIndex = -1
+                    invalidate()
+                    // 滑动超过一行高度就当误触，避免想拖推子却弹了键盘
+                    if (abs(event.y - downY) < freqRowHeight &&
+                        abs(event.x - downX) < slotWidth * 1.5f
+                    ) {
+                        onRequestFreqInput?.invoke(idx)
+                    }
+                    return true
+                }
                 if (dragIndex < 0) return false
                 val idx = dragIndex
                 dragIndex = -1
@@ -366,6 +448,11 @@ class EqEditorView @JvmOverloads constructor(
                 return true
             }
             MotionEvent.ACTION_CANCEL -> {
+                if (freqTouchIndex >= 0) {
+                    freqTouchIndex = -1
+                    invalidate()
+                    return true
+                }
                 if (dragIndex >= 0) {
                     dragIndex = -1
                     invalidate()
@@ -378,7 +465,7 @@ class EqEditorView @JvmOverloads constructor(
     }
 
     private fun indexAt(x: Float): Int =
-        ((x - barLeft) / slotWidth).toInt().coerceIn(0, EqPresets.BAND_COUNT - 1)
+        ((x - barLeft) / slotWidth).toInt().coerceIn(0, freqs.size - 1)
 
     private fun setGainFromY(y: Float) {
         if (dragIndex < 0) return

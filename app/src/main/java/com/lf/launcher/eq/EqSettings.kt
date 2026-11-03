@@ -22,6 +22,30 @@ object EqSettings {
 
     fun preampDb(): Float = SettingsStore.getString(Keys.EQ_PREAMP, "0").toFloatOrNull() ?: 0f
 
+    /**
+     * 31 个中心频率；没存过或存坏了就回落到 1/3 倍频程默认布局。
+     *
+     * 频点可以随增益一起改（界面上点频点数就能改 Hz），所以必须和增益成对存、成对读 ——
+     * 只迁一个会出现"曲线是新的、作用位置还是旧的"这种对不上的状态。
+     */
+    fun freqs(): FloatArray {
+        val raw = SettingsStore.getString(Keys.EQ_FREQS, "")
+        if (raw.isNotBlank()) {
+            val parts = raw.split(',')
+            if (parts.size == EqPresets.BAND_COUNT) {
+                val out = FloatArray(parts.size)
+                var ok = true
+                for (i in parts.indices) {
+                    val v = parts[i].trim().toFloatOrNull()
+                    if (v == null) { ok = false; break }
+                    out[i] = v
+                }
+                if (ok) return EqPresets.sanitizeFreqs(out)
+            }
+        }
+        return EqPresets.FREQS.copyOf()
+    }
+
     /** 31 个增益；没存过就按预设给（默认平直） */
     fun gains(): FloatArray {
         val raw = SettingsStore.getString(Keys.EQ_GAINS, "")
@@ -45,11 +69,22 @@ object EqSettings {
         }
     }
 
-    fun save(enabled: Boolean, preset: String, preampDb: Float, gains: FloatArray) {
+    /**
+     * 落盘。**频点必须显式传**：早先给过 `freqs` 默认值，结果「建 effect 失败退回关闭」
+     * 那条路径调 save 时用默认值把用户调的频点抹回了网格。靠签名强制杜绝。
+     */
+    fun save(
+        enabled: Boolean,
+        preset: String,
+        preampDb: Float,
+        gains: FloatArray,
+        freqs: FloatArray,
+    ) {
         SettingsStore.setBool(Keys.EQ_ENABLED, enabled)
         SettingsStore.setString(Keys.EQ_PRESET, preset)
         SettingsStore.setString(Keys.EQ_PREAMP, preampDb.toString())
         SettingsStore.setString(Keys.EQ_GAINS, gains.joinToString(","))
+        SettingsStore.setString(Keys.EQ_FREQS, EqPresets.sanitizeFreqs(freqs).joinToString(","))
         EqEngine.remember(gains)
     }
 
@@ -69,6 +104,6 @@ object EqSettings {
             if (EqEngine.active) EqEngine.setEnabled(false)
             return true
         }
-        return EqEngine.apply(gains(), true, preampDb())
+        return EqEngine.apply(gains(), true, preampDb(), freqs())
     }
 }

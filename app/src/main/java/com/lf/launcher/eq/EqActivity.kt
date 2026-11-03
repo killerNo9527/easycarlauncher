@@ -15,6 +15,8 @@ import com.lf.launcher.peq.EqPresets
 import com.lf.launcher.settings.Keys
 import com.lf.launcher.settings.SettingsStore
 import com.lf.launcher.ui.SystemUi
+import java.util.Locale
+import kotlin.math.abs
 
 /**
  * 均衡器调整页。
@@ -33,6 +35,7 @@ class EqActivity : AppCompatActivity() {
     private lateinit var presetCustom: TextView
 
     private var gains = FloatArray(EqPresets.BAND_COUNT)
+    private var freqs = EqPresets.FREQS.copyOf()
     private var preset = PRESET_CUSTOM
     private var preampDb = 0f
     private var enabled = false
@@ -62,6 +65,7 @@ class EqActivity : AppCompatActivity() {
         load()
 
         editor.gains = gains
+        editor.freqs = freqs
         // 注意：EqEditorView 内部的 gains 是 `value.copyOf()` 出来的**副本**（见它的 setter），
         // 拖动时改的是它自己那份。所以这里必须把回调带回来的值写回本 Activity 的数组，
         // 否则 scheduleApply() 下发的、onEditFinished 落盘的，都是拖之前那组旧增益 ——
@@ -74,6 +78,7 @@ class EqActivity : AppCompatActivity() {
         }
         editor.onEditFinished = { persist() }
         editor.onRequestInput = { index -> showGainInput(index) }
+        editor.onRequestFreqInput = { index -> showFreqInput(index) }
 
         toggleView.setOnClickListener {
             enabled = !enabled
@@ -89,6 +94,7 @@ class EqActivity : AppCompatActivity() {
             persist()
             pushToEngine()
         }
+        findViewById<TextView>(R.id.eq_freq_reset).setOnClickListener { resetFreqs() }
 
         presetFlat.setOnClickListener { applyPreset(PRESET_FLAT, EqPresets.FLAT) }
         presetCar.setOnClickListener { applyPreset(PRESET_CAR, EqPresets.CAR_CORRECTION) }
@@ -156,7 +162,8 @@ class EqActivity : AppCompatActivity() {
             !enabled -> "未开启"
             EqEngine.lastError != null -> EqEngine.lastError!!
             !EqEngine.created -> "未启用"
-            else -> "全局生效中 · 31 段"
+            EqPresets.isDefaultFreqs(freqs) -> "全局生效中 · 31 段"
+            else -> "全局生效中 · 31 段（自定义频点）"
         }
         statusView.text = text
         statusView.setTextColor(
@@ -170,8 +177,12 @@ class EqActivity : AppCompatActivity() {
 
     private fun applyPreset(id: String, data: FloatArray) {
         gains = data.copyOf()
+        // 预设是「频点 + 增益」的整套方案：内置曲线都按 1/3 倍频程网格拟合，
+        // 只套增益、频点还停在用户挪过的地方，曲线就落到错位置上了。
+        freqs = EqPresets.FREQS.copyOf()
         preset = id
         editor.gains = gains
+        editor.freqs = freqs
         renderPresets()
         persist()
         // 选预设通常意味着想听效果，顺手把开关打开（已经开着就只更新曲线）
@@ -197,7 +208,7 @@ class EqActivity : AppCompatActivity() {
      * 双击哪根就给哪根输入，键盘弹出时只占屏幕中间一条。
      */
     private fun showGainInput(index: Int) {
-        val freq = EqPresets.FREQS[index]
+        val freq = freqs.getOrElse(index) { EqPresets.FREQS[index] }
         val label = if (freq >= 1000f) {
             String.format(java.util.Locale.US, "%.1f kHz", freq / 1000f).replace(".0 ", " ")
         } else {
@@ -247,6 +258,85 @@ class EqActivity : AppCompatActivity() {
             .show()
     }
 
+    /**
+     * 点频点标签后弹的「改中心频率」输入框。
+     *
+     * 可用范围被夹在左右邻居之间（各留 [EqPresets.MIN_RATIO] 的间隙），
+     * 所以改一段永远不会挤动别的段 —— 用户改的是"这一段在哪"，不是"重排整条曲线"。
+     */
+    private fun showFreqInput(index: Int) {
+        val (lo, hi) = freqRange(index)
+        val input = EditText(this).apply {
+            setText(String.format(Locale.US, "%.0f", freqs[index]))
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+            selectAll()
+            setPadding(dp(20), dp(12), dp(20), dp(12))
+            setTextColor(0xFFF2F5F8.toInt())
+            setHintTextColor(0xFF8A929E.toInt())
+            hint = String.format(Locale.US, "%.0f ~ %.0f", lo, hi)
+        }
+        val box = FrameLayout(this).apply {
+            setPadding(dp(20), dp(8), dp(20), dp(0))
+            addView(input)
+        }
+        val isDefault = abs(freqs[index] - EqPresets.FREQS[index]) < 0.05f
+
+        AlertDialog.Builder(this, R.style.EqDialogTheme)
+            .setTitle(
+                "第 ${index + 1} 段 · 中心频率 ${EqPresets.freqLabel(freqs[index])}Hz" +
+                    if (isDefault) "（标准）" else ""
+            )
+            .setView(box)
+            .setPositiveButton("确定") { _, _ ->
+                val v = input.text.toString().trim().toFloatOrNull()
+                if (v == null || v <= 0f) {
+                    toast("请输入频率，例如 800")
+                    return@setPositiveButton
+                }
+                setFreq(index, v)
+            }
+            .setNeutralButton("恢复默认") { _, _ -> setFreq(index, EqPresets.FREQS[index]) }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    /** 第 [index] 段可用的频率区间：卡在前后邻居之间 */
+    private fun freqRange(index: Int): Pair<Float, Float> {
+        val lo = if (index > 0) freqs[index - 1] * EqPresets.MIN_RATIO else EqPresets.MIN_HZ
+        val hi = if (index < freqs.size - 1) freqs[index + 1] / EqPresets.MIN_RATIO
+        else EqPresets.MAX_HZ
+        return lo.coerceAtLeast(EqPresets.MIN_HZ) to hi.coerceAtMost(EqPresets.MAX_HZ)
+    }
+
+    private fun setFreq(index: Int, hz: Float) {
+        val (lo, hi) = freqRange(index)
+        val target = hz.coerceIn(lo, hi)
+        if (abs(target - hz) > 0.5f) {
+            toast("超出可用范围（${lo.toInt()}~${hi.toInt()} Hz），已收到边界")
+        }
+        val next = freqs.copyOf()
+        next[index] = target
+        freqs = EqPresets.sanitizeFreqs(next)
+        editor.freqs = freqs
+        preset = PRESET_CUSTOM
+        renderPresets()
+        persist()
+        pushToEngine()
+    }
+
+    /** 全部恢复成 20Hz~20kHz 的 1/3 倍频程标准频点（增益不动） */
+    private fun resetFreqs() {
+        if (EqPresets.isDefaultFreqs(freqs)) {
+            toast("当前已经是标准 1/3 倍频程频点")
+            return
+        }
+        freqs = EqPresets.FREQS.copyOf()
+        editor.freqs = freqs
+        persist()
+        pushToEngine()
+        toast("已恢复 31 段标准频点")
+    }
+
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density).toInt()
 
     private fun toast(msg: String) {
@@ -260,7 +350,7 @@ class EqActivity : AppCompatActivity() {
 
     private fun pushToEngine() {
         ui.removeCallbacks(applyTask)
-        val ok = EqEngine.apply(gains, enabled, preampDb)
+        val ok = EqEngine.apply(gains, enabled, preampDb, freqs)
         if (!ok && enabled) {
             // 本机建不出 effect：把开关退回去，别让用户以为在跑
             enabled = false
@@ -277,10 +367,11 @@ class EqActivity : AppCompatActivity() {
         enabled = EqSettings.enabled()
         preampDb = EqSettings.preampDb()
         gains = EqSettings.gains()
+        freqs = EqSettings.freqs()
     }
 
     private fun persist() {
-        EqSettings.save(enabled, preset, preampDb, gains)
+        EqSettings.save(enabled, preset, preampDb, gains, freqs)
     }
 
     companion object {

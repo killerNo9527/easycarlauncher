@@ -160,7 +160,7 @@ LauncherActivity        HOME / singleTask / 横屏锁定 / 全屏沉浸
 
 `DynamicsProcessing` 挂在 **session 0**（全局输出混音）上，所以所有 App 的声音都会过它。代价与限制：
 
-- **控制权排他**：文档明确"If priority is higher than the priority used by the current effect engine owner, the control will be transferred"。所以桌面 EQ 和 CarEQ 同时开，后开的会抢走前一个。
+- **控制权排他**：文档明确"If priority is higher than the priority used by the current effect engine owner, the control will be transferred"。所以桌面 EQ 和 FreeBand 同时开，后开的会抢走前一个。
 - **官方对这条路的态度是 deprecated**：`WARNING: attaching a DynamicsProcessing to global output mix is deprecated!`。能用，但不是长期支持的用法。
 - **不覆盖硬件通路**：收音机是独立硬件通路，不经过 Android 混音。
 
