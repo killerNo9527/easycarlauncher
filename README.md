@@ -6,15 +6,15 @@
 
 ![首页](preview/home-m47.png)
 
-<table>
-<tr>
-<td width="50%"><img src="preview/apps-m47.png" alt="应用列表"></td>
-<td width="50%"><img src="preview/eq-m47.png" alt="31 段均衡器"></td>
-</tr>
-<tr>
-<td align="center">应用列表（图标随安装变化）</td>
-<td align="center">31 段全局均衡器</td>
-</tr>
+<table>  
+<tr>  
+<td width="50%"><img src="preview/apps-m47.png" alt="应用列表"></td>  
+<td width="50%"><img src="preview/eq-m47.png" alt="31 段均衡器"></td>  
+</tr>  
+<tr>  
+<td align="center">应用列表（图标随安装变化）</td>  
+<td align="center">31 段全局均衡器</td>  
+</tr>  
 </table>
 
 ---
@@ -74,15 +74,15 @@
 
 这些是设计上的取舍或平台限制，不是没做完：
 
-| 限制 | 说明 |
-|---|---|
-| **歌词需要 md3Music** | 歌词由播放器写进 `MediaItem.mediaMetadata.extras`，本项目通过 Media3 读取。换成别的播放器只能拿到歌名、封面、进度，没有歌词 |
-| **悬浮地图需要悬浮修改版** | 官方高德/百度地图没有悬浮窗，延迟回桌面后桌面会盖住它。默认行为因此是「直接打开导航」，只有换用悬浮版地图时才切到悬浮模式 |
-| **天气要自备 Key** | 和风免费额度够个人用，但要自己注册。代码里不含任何密钥 |
-| **`targetSdk` 停在 28** | 车机是 Android 9。抬高会引入后台启动限制与分区存储，对桌面场景全是负收益 |
-| **桌面 EQ 与 CarEQ 不能同开** | `AudioEffect` 对同一个 session 的控制权是排他的，后开的会抢走前一个。只开一个 |
-| **没有油耗 / 行程数据** | 这两个字段走主机厂私有 binder，能读到但解析不出，相关代码已移除 |
-| **蜂窝信号可能显示斜杠** | 走私有通道的车机上 `SignalStrength` 读不到 |
+| 限制                     | 说明                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| **歌词需要 md3Music**      | 歌词由播放器写进 `MediaItem.mediaMetadata.extras`，本项目通过 Media3 读取。换成别的播放器只能拿到歌名、封面、进度，没有歌词 |
+| **悬浮地图需要悬浮修改版**        | 官方高德/百度地图没有悬浮窗，延迟回桌面后桌面会盖住它。默认行为因此是「直接打开导航」，只有换用悬浮版地图时才切到悬浮模式                      |
+| **天气要自备 Key**          | 和风免费额度够个人用，但要自己注册。代码里不含任何密钥                                                        |
+| **`targetSdk` 停在 28**  | 车机是 Android 9。抬高会引入后台启动限制与分区存储，对桌面场景全是负收益                                          |
+| **桌面 EQ 与 CarEQ 不能同开** | `AudioEffect` 对同一个 session 的控制权是排他的，后开的会抢走前一个。只开一个                                 |
+| **没有油耗 / 行程数据**        | 这两个字段走主机厂私有 binder，能读到但解析不出，相关代码已移除                                                |
+| **蜂窝信号可能显示斜杠**         | 走私有通道的车机上 `SignalStrength` 读不到                                                     |
 
 ---
 
@@ -120,7 +120,7 @@ echo "sdk.dir=/path/to/android-sdk" > local.properties
 # 产物：app/build/outputs/apk/debug/app-debug.apk
 ```
 
-> 仓库里不含 `local.properties`、签名文件和构建产物，都需要本地生成。
+> 仓库里不含 `local.properties`、签名文件和构建产物，都需要本地生成。  
 > 本项目默认用 debug 签名，装车机自用足够；要长期使用建议自己生成 keystore。
 
 ---
@@ -132,11 +132,13 @@ echo "sdk.dir=/path/to/android-sdk" > local.properties
 设置 → 天气 → 认证方式，二选一：
 
 **API KEY**（推荐，最省事）
+
 1. [console.qweather.com](https://console.qweather.com) 建项目，拿 API KEY
 2. 同一页面顶部复制 **API Host**（形如 `abc1234xyz.re.qweatherapi.com`）
 3. 在「和风 Key」里填，两个字段都要给
 
 **JWT**（新项目只能这样）
+
 1. 控制台生成 Key ID 与 Ed25519 私钥（整段 PEM）
 2. 在「JWT 凭据」里填 Project ID / Key ID / 私钥
 3. 同样需要填 API Host
@@ -182,18 +184,18 @@ app/src/main/
 
 ## 文档
 
-| 文件 | 内容 |
-|---|---|
-| [`docs/USAGE.md`](docs/USAGE.md) | **使用说明**：每一组设置做什么、怎么配天气/音乐/地图/EQ |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 架构与实现细节：地图四通道、歌词链路、状态栏三态、尺寸体系 |
-| [`docs/research/`](docs/research/) | 技术调研：AOSP 路径拆解、悬浮窗可行性实测、高德广播实测、md3Music 接口调研 |
-| [`docs/changelog/`](docs/changelog/) | 逐版本变更说明（m4 → m47），每个 bug 的根因都写清楚了 |
+| 文件                                             | 内容                                           |
+| ---------------------------------------------- | -------------------------------------------- |
+| [`docs/USAGE.md`](docs/USAGE.md)               | **使用说明**：每一组设置做什么、怎么配天气/音乐/地图/EQ             |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | 架构与实现细节：地图四通道、歌词链路、状态栏三态、尺寸体系                |
+| [`docs/research/`](docs/research/)             | 技术调研：AOSP 路径拆解、悬浮窗可行性实测、高德广播实测、md3Music 接口调研 |
+| [`docs/changelog/`](docs/changelog/)           | 逐版本变更说明（m4 → m47），每个 bug 的根因都写清楚了            |
 
 ---
 
 ## 相关项目
 
-- **CarEQ**（`若已发布，把仓库地址填到这里`） — 从本项目的均衡器抽出、可单独安装的 31 段全局 EQ，带开机自启，不依赖任何其他 App
+- **CarEQ**（[killerNo9527/eq-](https://github.com/killerNo9527/eq-)） — 从本项目的均衡器抽出、可单独安装的 31 段全局 EQ，带开机自启，不依赖任何其他 App
 
 两者都挂 `session 0`，同时开启会互相抢控制权，只开一个。
 
