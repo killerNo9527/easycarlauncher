@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  已选快捷应用的一行：序号 + 图标 + 名字 + 上移 / 下移 / 移除。
+
+  为什么整行不铺满宽度、名字用固定宽：
+    1920 宽的屏上，如果行铺满、名字用 weight 顶开，三个按钮会跑到离名字 1700dp 的
+    最右边 —— 手要横跨半个屏幕才能点到「上移」。现在名字宽度固定、按钮紧跟其后，
+    整行约 470dp，所有行一样宽（左对齐成一列），看着也整齐。
+  按钮都是 40dp 的触摸区（字只有 18sp），车机上按得准比好看重要。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_setting_row"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="6dp">
+
+    <TextView
+        android:id="@+id/row_order"
+        android:layout_width="18dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:text="1"
+        android:textColor="@color/accent"
+        android:textSize="@dimen/setting_desc_text_size" />
+
+    <ImageView
+        android:id="@+id/row_icon"
+        android:layout_width="@dimen/shortcut_row_icon"
+        android:layout_height="@dimen/shortcut_row_icon"
+        android:layout_marginStart="8dp"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter" />
+
+    <TextView
+        android:id="@+id/row_label"
+        android:layout_width="@dimen/shortcut_row_label"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/setting_title_text_size" />
+
+    <TextView
+        android:id="@+id/row_up"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_app_focus"
+        android:clickable="true"
+        android:contentDescription="上移"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="↑"
+        android:textColor="@color/text_secondary"
+        android:textSize="@dimen/setting_title_text_size" />
+
+    <TextView
+        android:id="@+id/row_down"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/bg_app_focus"
+        android:clickable="true"
+        android:contentDescription="下移"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="↓"
+        android:textColor="@color/text_secondary"
+        android:textSize="@dimen/setting_title_text_size" />
+
+    <TextView
+        android:id="@+id/row_remove"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="6dp"
+        android:background="@drawable/bg_app_focus"
+        android:clickable="true"
+        android:contentDescription="移除"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="✕"
+        android:textColor="@color/text_secondary"
+        android:textSize="@dimen/setting_title_text_size" />
+
+</LinearLayout>

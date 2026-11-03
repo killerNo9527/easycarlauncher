@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  大屏档（宽 ≥ 1400dp）：
+    density 1.0 → 1920px = 1920×1080dp，可用高 1022dp
+  卡片高度同样交给 weight，这里只放大栅格与字号。
+-->
+<resources>
+    <dimen name="sidebar_width">100dp</dimen>
+    <dimen name="right_container_width">420dp</dimen>
+    <dimen name="right_container_card_spacing">12dp</dimen>
+    <dimen name="content_padding_end">24dp</dimen>
+    <dimen name="home_card_corner_radius">26dp</dimen>
+
+    <dimen name="time_card_height">96dp</dimen>
+
+    <dimen name="card_padding_horizontal">24dp</dimen>
+    <dimen name="card_padding_vertical">18dp</dimen>
+
+    <dimen name="status_bar_height">52dp</dimen>
+    <dimen name="status_bar_text_size">24sp</dimen>
+    <dimen name="status_bar_date_text_size">17sp</dimen>
+
+    <!-- 状态栏右侧图标：触摸区 / 图标内缩（触摸区 - 2×内缩 = 图标可视尺寸）/ 图标间距 -->
+    <dimen name="status_icon_touch">40dp</dimen>
+    <dimen name="status_icon_inset">7dp</dimen>
+    <dimen name="status_icon_gap">16dp</dimen>
+
+    <!-- 状态栏左侧快捷应用：44 - 2×6 = 32dp 可见，比右侧 26dp 的状态图标大一号。
+         gap 给到 14dp（图标之间的实际空隙 = gap + 两侧内缩 = 26dp）：
+         应用图标里有方有圆，6dp 那版挨在一起像一坨，隔开后才看得出是几个独立入口 -->
+    <dimen name="status_shortcut_touch">44dp</dimen>
+    <dimen name="status_shortcut_inset">6dp</dimen>
+    <dimen name="status_shortcut_gap">18dp</dimen>
+
+    <!-- 选择页「已选」行里的小图标 -->
+    <dimen name="shortcut_row_icon">36dp</dimen>
+    <dimen name="shortcut_row_label">240dp</dimen>
+
+    <dimen name="time_card_time_text_size">58sp</dimen>
+    <dimen name="time_card_date_text_size">20sp</dimen>
+    <dimen name="music_title_text_size">32sp</dimen>
+    <dimen name="music_artist_text_size">23sp</dimen>
+    <dimen name="card_title_text_size">18sp</dimen>
+    <dimen name="card_body_text_size">15sp</dimen>
+
+    <!-- 封面 ≈ 歌名 28sp + 5dp + 歌手 21sp 这块文字（约 62dp）再大一点点 -->
+    <dimen name="album_cover_size">80dp</dimen>
+    <dimen name="lyric_line_height">40dp</dimen>
+    <dimen name="lyric_text_size">23sp</dimen>
+    <dimen name="lyric_current_text_size">31sp</dimen>
+    <dimen name="lyric_translation_text_size">17sp</dimen>
+
+    <!-- 底栏「当前播放」：封面 / 歌名 / 歌手 -->
+    <dimen name="bottom_cover_size">70dp</dimen>
+    <dimen name="bottom_title_text_size">27sp</dimen>
+    <dimen name="bottom_artist_text_size">20sp</dimen>
+    <dimen name="control_btn_small">63dp</dimen>
+    <dimen name="control_btn_play">83dp</dimen>
+    <dimen name="control_gap">48dp</dimen>
+
+    <dimen name="app_icon_size">72dp</dimen>
+    <dimen name="app_grid_spacing">18dp</dimen>
+    <dimen name="app_label_text_size">14sp</dimen>
+    <dimen name="app_list_padding_horizontal">48dp</dimen>
+    <dimen name="app_list_padding_vertical">32dp</dimen>
+
+    <!-- 控制键图标 -->
+    <dimen name="control_icon_play">26sp</dimen>
+    <dimen name="control_icon_small">15sp</dimen>
+    <dimen name="control_icon_inset">16dp</dimen>
+    <dimen name="control_gap_horizontal">24dp</dimen>
+
+    <!-- 地图区空态 -->
+    <dimen name="map_title_text_size">26sp</dimen>
+    <dimen name="map_desc_text_size">15sp</dimen>
+    <dimen name="map_action_text_size">17sp</dimen>
+
+    <!-- 卡片里的数值（负载） -->
+    <dimen name="card_value_text_size">24sp</dimen>
+
+    <!-- 天气卡温度 -->
+    <dimen name="weather_temp_text_size">44sp</dimen>
+
+    <!-- 设置页 -->
+    <dimen name="setting_section_text_size">13sp</dimen>
+    <dimen name="setting_row_padding">20dp</dimen>
+    <dimen name="setting_title_text_size">18sp</dimen>
+    <dimen name="setting_desc_text_size">14sp</dimen>
+
+    <!--
+      框架：底栏高度 / 底栏离底距离 / 页面给底栏让出的高度 / 卡片列离底距离
+
+      这里的四个数必须连起来算，否则底栏上方那条缝会和卡片间距对不上：
+        pager_bottom_inset = bottom_bar_height + bottom_bar_margin_bottom   （只给底栏让位，不留余量）
+        home_bottom_margin = right_container_card_spacing                    （底栏上方的缝 = 卡片间距）
+      改前是 104 + 24 = 28dp 的缝，而卡片之间只有 12dp，所以底栏那一圈看着比卡片之间松。
+    -->
+    <dimen name="bottom_bar_height">88dp</dimen>
+    <dimen name="bottom_bar_margin_bottom">12dp</dimen>
+    <dimen name="pager_bottom_inset">100dp</dimen>
+    <dimen name="home_bottom_margin">12dp</dimen>
+
+    <!--
+      底栏播放键。以前这三个是写死在 activity_launcher.xml 里的 34/44/34，
+      不随档位变 —— 可底栏高度是会变的（这里 88dp，矮屏只有 62dp），
+      同一个 44dp 在矮屏上就占掉了七成高度，撑得满满当当。
+      现在按底栏高度取比例：主键 ≈ 0.64 × 高，副键 ≈ 0.5 × 高。
+    -->
+    <dimen name="bottom_btn_side">44dp</dimen>
+    <dimen name="bottom_btn_play">56dp</dimen>
+    <dimen name="bottom_btn_gap">22dp</dimen>
+    <dimen name="bottom_btn_side_inset">6dp</dimen>
+    <dimen name="bottom_btn_play_inset">13dp</dimen>
+</resources>

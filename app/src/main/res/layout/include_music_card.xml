@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  音乐卡（歌词为主，控件默认在全局底栏 include_bottom_bar）：
+    封面 → 歌名/歌手 → 歌词（5 行，当前行固定第 3 行）→ [卡片内控制键] → 进度
+
+  卡片内控制键（card_media_controls）默认 GONE，**只在设置里关掉底栏时才显示**，
+  见 HomeFragment.applyMediaControlsVisibility()。底栏开着时它就是 0 高度，什么都不占。
+
+  尺寸按卡片高度百分比（heightPercent + ratio），同一份布局在 235 / 320 / 520dp
+  的卡片里都能等比缩放；字号走 dimen 两档。
+  数据来源见 MusicController：Media3 MediaController → extras["lyricInfo"] → 时间轴插值。
+-->
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/wd_music_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_card"
+    android:paddingStart="@dimen/card_padding_horizontal"
+    android:paddingTop="@dimen/card_padding_vertical"
+    android:paddingEnd="@dimen/card_padding_horizontal"
+    android:paddingBottom="@dimen/card_padding_vertical">
+
+    <!--
+      封面：圆形，边长 = album_cover_size，只比右边「歌名 + 歌手」那块文字大几个 dp。
+      （原来是卡片高的 26% ≈ 100dp，比两行文字高出一倍多，顶部看着是「一坨字贴在方图右上角」。）
+      图由 CircleArtView 用 BitmapShader 画圆，不依赖 clipToOutline/bg 的 outline。
+    -->
+    <FrameLayout
+        android:id="@+id/album_cover"
+        android:layout_width="@dimen/album_cover_size"
+        android:layout_height="@dimen/album_cover_size"
+        android:background="@drawable/bg_album_cover"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <com.lf.launcher.ui.CircleArtView
+            android:id="@+id/album_art"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null" />
+    </FrameLayout>
+
+    <!--
+      歌名 / 歌手：与封面组成「一行两组内容」。
+      两者顶到封面顶、底到封面底，串成一条 packed 垂直链 —— 整块文字在封面高度里居中。
+      （只顶对齐会让两行字贴在 100dp 高的封面顶端，右下方空出一大片，看着像没对齐。）
+    -->
+    <TextView
+        android:id="@+id/music_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="4dp"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text="@string/card_music_title"
+        android:textColor="@color/text_primary"
+        android:textSize="@dimen/music_title_text_size"
+        app:layout_constraintBottom_toTopOf="@id/music_artist"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/album_cover"
+        app:layout_constraintTop_toTopOf="@id/album_cover"
+        app:layout_constraintVertical_chainStyle="packed" />
+
+    <TextView
+        android:id="@+id/music_artist"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginEnd="4dp"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text="@string/card_music_artist"
+        android:textColor="@color/text_secondary"
+        android:textSize="@dimen/music_artist_text_size"
+        app:layout_constraintBottom_toBottomOf="@id/album_cover"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/album_cover"
+        app:layout_constraintTop_toBottomOf="@id/music_title" />
+
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/top_content_bottom_barrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:constraint_referenced_ids="album_cover,music_artist" />
+
+    <!--
+      歌词层：行数由 @integer/lyric_lines 决定（3 / 5 / 7 三档按屏幕高度走），
+      **行本身在 HomeFragment.buildLyricRows() 里按档生成**，这里只是个容器。
+
+      之前是写死 5 行：想加 7 行档就得在 XML 里再摆两行、再在代码里维护一张 id 表，
+      两头容易对不上；改成按行数生成后，间隔、权重、当前行位置都是一个公式。
+
+      每一行都是 weight=1（等分），当前行那一格是 1.2 —— 它可能还要叠一行括号翻译。
+    -->
+    <LinearLayout
+        android:id="@+id/lyric_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="4dp"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toTopOf="@id/card_media_controls"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/top_content_bottom_barrier" />
+
+    <!--
+      卡片内的播放控制键：**只在底栏被隐藏时出现**。
+
+      底栏（activity_launcher 的 bottomBar）里有一套同样的 prev/play/next，那是常驻的；
+      一旦在设置里关掉底栏，切歌就没地方点了 —— 所以这里补一份。
+      底栏开着时这行是整个 GONE 的：GONE 的 view 在 ConstraintLayout 里被折叠成 0 尺寸、
+      margin 也一并忽略，所以 lyric_view 的 bottom 仍然贴着进度区，歌词高度一点不受影响。
+
+      尺寸比底栏那套大得多（56/66/56，底栏是 34/44/34）：底栏一行还要和首页/应用/设置
+      分宽度，卡片里整行只有三个键，有的是地方。车机上按键大一点更好瞄 —— 开车时
+      眼睛离开路面只有零点几秒，按键边缘在哪比按键好不好看重要。
+
+      键间距 34dp 也是同一个道理：三个键凑在一起容易按错，拉开到快一个键宽的距离，
+      「上一首」和「下一首」不会手滑点串。
+    -->
+    <LinearLayout
+        android:id="@+id/card_media_controls"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/progress_container"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <ImageView
+            android:id="@+id/btn_card_prev"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:contentDescription="上一首"
+            android:focusable="true"
+            android:padding="11dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_prev" />
+
+        <ImageView
+            android:id="@+id/btn_card_play"
+            android:layout_width="66dp"
+            android:layout_height="66dp"
+            android:layout_marginHorizontal="34dp"
+            android:background="@drawable/bg_control_play"
+            android:contentDescription="播放/暂停"
+            android:focusable="true"
+            android:padding="17dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_play" />
+
+        <ImageView
+            android:id="@+id/btn_card_next"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:contentDescription="下一曲"
+            android:focusable="true"
+            android:padding="11dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_next" />
+    </LinearLayout>
+
+    <!-- 进度区：留在卡里，控制键都在底栏 -->
+    <LinearLayout
+        android:id="@+id/progress_container"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/music_current_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFeatureSettings="tnum"
+            android:text="00:00"
+            android:textColor="@color/text_tertiary"
+            android:textSize="@dimen/card_body_text_size" />
+
+        <ProgressBar
+            android:id="@+id/music_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="4dp"
+            android:layout_marginHorizontal="10dp"
+            android:layout_weight="1"
+            android:max="1000"
+            android:progress="0"
+            android:progressDrawable="@drawable/progress_music" />
+
+        <TextView
+            android:id="@+id/music_total_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFeatureSettings="tnum"
+            android:text="00:00"
+            android:textColor="@color/text_tertiary"
+            android:textSize="@dimen/card_body_text_size" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  状态栏快捷应用的选择页：上半是「已选（可排序）」，下半是「全部应用（点击添加）」。
+
+  为什么不用上下两个 RecyclerView 塞在一起：
+    上半最多 5 行，直接按配置动态 inflate 就够，反而省掉一个 adapter 和一套拖动逻辑；
+    排序用 ↑ / ↓ 按钮而不是长按拖动 —— 车机上拖动的容错太低，点两下更稳。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_base"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/app_list_padding_horizontal"
+        android:paddingTop="18dp"
+        android:paddingEnd="@dimen/app_list_padding_horizontal"
+        android:paddingBottom="4dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="状态栏快捷应用"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/music_title_text_size" />
+
+            <TextView
+                android:id="@+id/picker_selected_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="已选 0 / 5"
+                android:textColor="@color/accent"
+                android:textSize="@dimen/setting_desc_text_size" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/btn_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_app_focus"
+            android:focusable="true"
+            android:paddingHorizontal="18dp"
+            android:paddingVertical="8dp"
+            android:text="完成"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/setting_desc_text_size" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="@dimen/app_list_padding_horizontal"
+        android:paddingTop="8dp"
+        android:paddingEnd="@dimen/app_list_padding_horizontal"
+        android:paddingBottom="14dp"
+        android:text="顺序就是状态栏左上角从左到右的顺序；点「全部应用」里的图标可以添加，再点一次是移除"
+        android:textColor="@color/text_tertiary"
+        android:textSize="@dimen/setting_desc_text_size" />
+
+    <!-- 已选：最多 5 行，由代码 inflate item_shortcut_selected -->
+    <LinearLayout
+        android:id="@+id/picker_selected"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/app_list_padding_horizontal" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="@dimen/app_list_padding_horizontal"
+        android:paddingTop="16dp"
+        android:paddingEnd="@dimen/app_list_padding_horizontal"
+        android:paddingBottom="6dp"
+        android:text="全部应用"
+        android:textColor="@color/text_secondary"
+        android:textSize="@dimen/setting_desc_text_size" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/picker_all"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:paddingStart="@dimen/app_list_padding_horizontal"
+        android:paddingEnd="@dimen/app_list_padding_horizontal"
+        android:paddingBottom="32dp" />
+
+</LinearLayout>

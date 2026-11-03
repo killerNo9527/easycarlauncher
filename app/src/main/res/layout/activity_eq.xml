@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/eq_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#12151A"
+    android:orientation="vertical">
+
+    <!-- 顶部：标题 / 状态 / 总开关 / 关闭 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="10dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="均衡器"
+            android:textColor="#F2F5F8"
+            android:textSize="21sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/eq_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:text="—"
+            android:textColor="#8A929E"
+            android:textSize="13sp" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/eq_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_eq_chip"
+            android:paddingStart="18dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="8dp"
+            android:text="已关闭"
+            android:textColor="#C7CDD4"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/eq_close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/bg_eq_chip"
+            android:paddingStart="18dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="8dp"
+            android:text="关闭"
+            android:textColor="#C7CDD4"
+            android:textSize="15sp" />
+    </LinearLayout>
+
+    <!-- 曲线 + 推子 -->
+    <com.lf.launcher.eq.EqEditorView
+        android:id="@+id/eq_editor"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- 底部：预设 / 前级 / 归零 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="10dp"
+            android:text="预设"
+            android:textColor="#8A929E"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/preset_flat"
+            style="@style/EqChip"
+            android:text="平直" />
+
+        <TextView
+            android:id="@+id/preset_car"
+            style="@style/EqChip"
+            android:text="车机矫正" />
+
+        <TextView
+            android:id="@+id/preset_custom"
+            style="@style/EqChip"
+            android:text="自定义" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/preamp_minus"
+            style="@style/EqChip"
+            android:text="−" />
+
+        <TextView
+            android:id="@+id/preamp_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="86dp"
+            android:gravity="center"
+            android:text="前级 0.0 dB"
+            android:textColor="#F2F5F8"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/preamp_plus"
+            style="@style/EqChip"
+            android:text="+" />
+
+        <TextView
+            android:id="@+id/eq_reset"
+            style="@style/EqChip"
+            android:layout_marginStart="14dp"
+            android:text="全部归零" />
+    </LinearLayout>
+</LinearLayout>

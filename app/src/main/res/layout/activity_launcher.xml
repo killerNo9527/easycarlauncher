@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  主框架：
+    wallpaper_bg → view_pager → statusBar → bottomBar
+  底部条是全局的：左边当前播放（封面/歌名/歌手），中间收藏+播放+下一首，
+  右边是首页/应用/设置。音乐卡里不再放控件，控件只在这里。
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root_view"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_base">
+
+    <ImageView
+        android:id="@+id/wallpaper_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        android:src="@drawable/bg_wallpaper_default" />
+
+    <View
+        android:id="@+id/wallpaper_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/wallpaper_scrim" />
+
+    <!--
+      内容容器：全局四边留白与系统栏安全区的 padding 都加在这一层。
+      壁纸 / scrim 留在外面，保证状态栏后面也是满屏壁纸，而不是窗口底色。
+    -->
+    <FrameLayout
+        android:id="@+id/content_root"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- 底部留出底栏高度，避免卡片被条带压住 -->
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/view_pager"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginBottom="@dimen/pager_bottom_inset" />
+
+        <!--
+          顶部状态栏：中间「时间 + 日期」，右边「信号 / Wi-Fi / 蓝牙 / 设置」。
+
+          为什么用 FrameLayout 而不是 LinearLayout + 权重：
+            权重占位把时钟推到的是「图标之外剩余空间的中点」，屏幕越宽偏得越多；
+            只有 layout_gravity="center" 才是真正的屏幕水平中点（实测墨迹中心与 960px 重合）。
+
+          这一行里的每个子项都靠各自容器的 center_vertical 对齐，所以**任何一项都不要
+          自己加 paddingVertical / 背景**：之前右边那个「高德悬浮窗 · 已配置」胶囊就是这么
+          跑偏的 —— 胶囊自带 4dp 上下内边距，文字比左边的时钟低半行。胶囊和右侧的瞬时功耗
+          都已删（车辆数据在这台车机上取不到，留着只会常显占位符）。
+
+          右侧四个图标都是真控件（见 StatusTray）：信号格是自绘的 4 段柱，Wi-Fi / 蓝牙按
+          真实状态换图，四个都能点。触摸区域比图标本身大一圈（status_icon_touch -
+          2×status_icon_inset = 图标可视尺寸），否则 16dp 的小图在车上根本按不准。
+        -->
+        <FrameLayout
+            android:id="@+id/statusBar"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/status_bar_height"
+            android:layout_gravity="top"
+            android:paddingStart="@dimen/content_padding_end"
+            android:paddingEnd="@dimen/content_padding_end">
+
+            <!--
+              左上角快捷应用：开关打开时这一条是 2~5 个应用图标（代码里按配置动态填），
+              关掉时整条清空、只留旁边那个三点占位。两者互斥，所以可以同框叠在同一位置。
+              图标与触摸区尺寸见 status_shortcut_*：44dp 触摸 / 32dp 可见，比右侧状态图标大一号。
+            -->
+            <LinearLayout
+                android:id="@+id/status_shortcuts"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_gravity="start|center_vertical"
+                android:gravity="center_vertical"
+                android:orientation="horizontal" />
+
+            <ImageView
+                android:id="@+id/status_shortcuts_more"
+                android:layout_width="@dimen/status_shortcut_touch"
+                android:layout_height="@dimen/status_shortcut_touch"
+                android:layout_gravity="start|center_vertical"
+                android:background="@drawable/bg_status_icon"
+                android:clickable="true"
+                android:contentDescription="状态栏快捷应用未开启，点击去设置"
+                android:focusable="true"
+                android:padding="@dimen/status_shortcut_inset"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_status_more" />
+
+            <!--
+              左「时间 + 日期」改成整行居中：以前是从左边排版起，1920 宽的屏上时钟孤零零
+              贴在左上角、右边留一大片空，看着像没对齐。现在时间块以屏幕中线为轴居中，
+              右侧图标仍贴右边，两边各自成组、互不牵制（所以用 FrameLayout 而不是权重占位 ——
+              权重占位只会把时间挤到「剩余空间的中点」，不是屏幕中点）。
+              baselineAligned 保持默认 true：24sp 的时间与 17sp 的日期按基线对齐，
+              而不是按字框中心对齐，后者小字会看着偏高。
+            -->
+            <LinearLayout
+                android:id="@+id/status_clock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/status_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFeatureSettings="tnum"
+                    android:includeFontPadding="false"
+                    android:textColor="@color/text_primary"
+                    android:textSize="@dimen/status_bar_text_size" />
+
+                <TextView
+                    android:id="@+id/status_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:includeFontPadding="false"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/status_bar_date_text_size" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_gravity="end|center_vertical"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- 信号：4 根自绘柱子，档位来自 SignalStrength.getLevel() -->
+                <com.lf.launcher.ui.SignalBarsView
+                    android:id="@+id/status_signal"
+                    android:layout_width="@dimen/status_icon_touch"
+                    android:layout_height="@dimen/status_icon_touch"
+                    android:background="@drawable/bg_status_icon"
+                    android:clickable="true"
+                    android:contentDescription="信号"
+                    android:focusable="true"
+                    android:padding="@dimen/status_icon_inset" />
+
+                <!--
+                  Wi-Fi / 蓝牙不再用 app:tint：三态的颜色（深 / 中 / 浅）和「关」态的红色叉
+                  已经写在矢量图里，tint 会把它们压成同一个颜色。
+                -->
+                <ImageView
+                    android:id="@+id/status_wifi"
+                    android:layout_width="@dimen/status_icon_touch"
+                    android:layout_height="@dimen/status_icon_touch"
+                    android:layout_marginStart="@dimen/status_icon_gap"
+                    android:background="@drawable/bg_status_icon"
+                    android:clickable="true"
+                    android:contentDescription="Wi-Fi"
+                    android:focusable="true"
+                    android:padding="@dimen/status_icon_inset"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_status_wifi_off" />
+
+                <ImageView
+                    android:id="@+id/status_bt"
+                    android:layout_width="@dimen/status_icon_touch"
+                    android:layout_height="@dimen/status_icon_touch"
+                    android:layout_marginStart="@dimen/status_icon_gap"
+                    android:background="@drawable/bg_status_icon"
+                    android:clickable="true"
+                    android:contentDescription="蓝牙"
+                    android:focusable="true"
+                    android:padding="@dimen/status_icon_inset"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_status_bt_off" />
+
+                <!-- 齿轮直接复用底栏的 ic_settings（实心填充），和底栏设置入口是同一个图标 -->
+                <ImageView
+                    android:id="@+id/status_settings"
+                    android:layout_width="@dimen/status_icon_touch"
+                    android:layout_height="@dimen/status_icon_touch"
+                    android:layout_marginStart="@dimen/status_icon_gap"
+                    android:background="@drawable/bg_status_icon"
+                    android:clickable="true"
+                    android:contentDescription="桌面设置"
+                    android:focusable="true"
+                    android:padding="@dimen/status_icon_inset"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_settings"
+                    app:tint="@color/text_primary" />
+            </LinearLayout>
+        </FrameLayout>
+
+        <!-- 全局底栏：播放信息 + 控制键 + 入口 -->
+        <LinearLayout
+            android:id="@+id/bottomBar"
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/bottom_bar_height"
+            android:layout_gravity="bottom"
+            android:layout_marginStart="@dimen/content_padding_end"
+            android:layout_marginEnd="@dimen/content_padding_end"
+            android:layout_marginBottom="@dimen/bottom_bar_margin_bottom"
+            android:background="@drawable/bg_bottom_bar"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp">
+
+            <FrameLayout
+                android:id="@+id/bottom_cover"
+                android:layout_width="@dimen/bottom_cover_size"
+                android:layout_height="@dimen/bottom_cover_size"
+                android:background="@drawable/bg_album_cover">
+
+                <com.lf.launcher.ui.CircleArtView
+                    android:id="@+id/bottom_art"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@null" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="250dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/bottom_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:text="未知歌曲"
+                    android:textColor="@color/text_primary"
+                    android:textSize="@dimen/bottom_title_text_size" />
+
+                <TextView
+                    android:id="@+id/bottom_artist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:text="未知歌手"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/bottom_artist_text_size" />
+            </LinearLayout>
+
+            <!-- 上一首：md3Music 没有收藏写接口（收藏只存在它自己的 prefs 里），
+                 红心做不了真同步，改成标准的「上一首」
+                 尺寸走 dimen 三档（见 values-w1400dp/dimens.xml 的 bottom_btn_*），
+                 跟底栏高度成比例，不再写死 -->
+            <ImageView
+                android:id="@+id/btn_prev"
+                android:layout_width="@dimen/bottom_btn_side"
+                android:layout_height="@dimen/bottom_btn_side"
+                android:layout_marginStart="20dp"
+                android:contentDescription="上一首"
+                android:focusable="true"
+                android:padding="@dimen/bottom_btn_side_inset"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_prev" />
+
+            <ImageView
+                android:id="@+id/btn_play"
+                android:layout_width="@dimen/bottom_btn_play"
+                android:layout_height="@dimen/bottom_btn_play"
+                android:layout_marginStart="@dimen/bottom_btn_gap"
+                android:background="@drawable/bg_control_play"
+                android:contentDescription="播放/暂停"
+                android:focusable="true"
+                android:padding="@dimen/bottom_btn_play_inset"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_play" />
+
+            <ImageView
+                android:id="@+id/btn_next"
+                android:layout_width="@dimen/bottom_btn_side"
+                android:layout_height="@dimen/bottom_btn_side"
+                android:layout_marginStart="@dimen/bottom_btn_gap"
+                android:contentDescription="下一曲"
+                android:focusable="true"
+                android:padding="@dimen/bottom_btn_side_inset"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_next" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <ImageView
+                android:id="@+id/nav_home"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:background="@drawable/bg_nav_item"
+                android:contentDescription="首页"
+                android:focusable="true"
+                android:padding="11dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_home" />
+
+            <ImageView
+                android:id="@+id/nav_apps"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_nav_item"
+                android:contentDescription="应用"
+                android:focusable="true"
+                android:padding="11dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_apps" />
+
+            <ImageView
+                android:id="@+id/nav_settings"
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_nav_item"
+                android:contentDescription="设置"
+                android:focusable="true"
+                android:padding="11dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_settings" />
+        </LinearLayout>
+
+        <!-- 侧边栏宿主：默认隐藏 -->
+        <FrameLayout
+            android:id="@+id/sidebarHost"
+            android:layout_width="@dimen/sidebar_width"
+            android:layout_height="match_parent"
+            android:layout_gravity="start"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+</FrameLayout>

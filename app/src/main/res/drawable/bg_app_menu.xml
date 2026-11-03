@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 长按图标弹出的菜单底板：和均衡器弹窗同一套深色，圆角 + 细描边 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#1B2029" />
+    <corners android:radius="12dp" />
+    <stroke android:width="1dp" android:color="#2E3640" />
+</shape>

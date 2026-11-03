@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 时间卡：左侧一条强调色竖线做节奏点，右边日期 / 星期两行，收窄后也不会叠字 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_card">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/card_padding_horizontal"
+        android:paddingEnd="@dimen/card_padding_horizontal">
+
+        <View
+            android:layout_width="3dp"
+            android:layout_height="0dp"
+            android:layout_marginVertical="18dp"
+            android:layout_marginEnd="14dp"
+            android:background="@drawable/bg_time_accent" />
+
+        <TextView
+            android:id="@+id/time_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFeatureSettings="tnum"
+            android:includeFontPadding="false"
+            android:letterSpacing="-0.02"
+            android:text="--:--"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/time_card_time_text_size" />
+
+        <TextView
+            android:id="@+id/time_ampm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_marginStart="6dp"
+            android:layout_marginBottom="10dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/card_body_text_size" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/date_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/time_card_date_text_size" />
+
+            <TextView
+                android:id="@+id/lunar_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:includeFontPadding="false"
+                android:textColor="@color/text_tertiary"
+                android:textSize="@dimen/card_body_text_size" />
+        </LinearLayout>
+    </LinearLayout>
+
+</FrameLayout>

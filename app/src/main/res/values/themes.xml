@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.CarLauncher" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/bg_base</item>
+        <item name="android:colorBackground">@color/bg_base</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">@bool/light_system_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/light_system_bars</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <!-- 弹窗里的单选/复选、进度条等控件跟随品牌蓝；不指定会退回 AppCompat 默认青色 -->
+        <item name="colorAccent">@color/accent</item>
+        <item name="colorControlActivated">@color/accent</item>
+        <item name="colorControlHighlight">@color/accent_soft</item>
+    </style>
+
+    <!-- 权限引导等系统级弹窗：跟随卡片色系，避免 AppCompat 默认灰底跳出视觉体系 -->
+    <style name="Theme.CarLauncher.Dialog" parent="Theme.AppCompat.DayNight.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/bg_dialog</item>
+        <item name="android:windowMinWidthMajor">46%</item>
+        <item name="android:windowMinWidthMinor">46%</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="colorAccent">@color/accent</item>
+    </style>
+
+    <style name="Text.Card.Title" parent="">
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">@dimen/card_title_text_size</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="Text.Card.Body" parent="">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">@dimen/card_body_text_size</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <!-- 均衡器页底部的小胶囊按钮（预设 / 前级 / 归零） -->
+    <!-- 数值输入弹窗：桌面有日夜两套配色，但均衡器页恒为深色，
+         所以这里固定用深色弹窗，不跟随日夜（否则白天弹出来一块白板很跳） -->
+    <style name="EqDialogTheme" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/bg_eq_dialog</item>
+        <item name="android:textColorPrimary">#F2F5F8</item>
+        <item name="android:textColorSecondary">#8A929E</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="android:backgroundDimAmount">0.55</item>
+    </style>
+
+    <style name="EqChip" parent="">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginEnd">8dp</item>
+        <item name="android:background">@drawable/bg_eq_chip</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingTop">8dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:paddingBottom">8dp</item>
+        <item name="android:textColor">#C7CDD4</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+</resources>

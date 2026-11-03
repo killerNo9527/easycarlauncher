@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 标准档（>= 600dp 高）：5 行。见 values/integers.xml 的三档说明 -->
+<resources>
+    <integer name="lyric_lines">5</integer>
+</resources>

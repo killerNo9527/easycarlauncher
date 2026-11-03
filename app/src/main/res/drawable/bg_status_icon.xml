@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 状态栏图标按下反馈：圆形水波，只在图标本身范围，不撑出状态栏 -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#332F6FE0">
+    <item android:id="@android:id/mask">
+        <shape android:shape="oval">
+            <solid android:color="#FFFFFF" />
+        </shape>
+    </item>
+</ripple>

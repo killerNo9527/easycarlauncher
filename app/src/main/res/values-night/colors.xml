@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  夜间（深色）色板 —— 系统处于 dark 时用这一套。
+  与 values/colors.xml 严格同名成对，切换时由系统按 uiMode 自动选择，
+  代码里一行 if 都不需要（只有阴影/图片这类没法用颜色表达的才需要单独处理）。
+-->
+<resources>
+    <color name="bg_base">#0B0D10</color>
+    <color name="bg_scrim">#66000000</color>
+
+    <!-- 卡片：半透明深色 + 自上而下的轻微明度差，MT8666 上避免与模糊层叠加掉帧 -->
+    <color name="card_bg">#CC161A1F</color>
+    <color name="card_bg_top">#F01B2129</color>
+    <color name="card_bg_bottom">#D911151B</color>
+    <color name="card_bg_solid">#1A1D22</color>
+    <color name="card_stroke">#1FFFFFFF</color>
+    <color name="card_stroke_soft">#12FFFFFF</color>
+
+    <color name="text_primary">#F2F4F7</color>
+    <color name="text_secondary">#98A0AE</color>
+    <color name="text_tertiary">#5F6673</color>
+
+    <color name="accent">#4C8DFF</color>
+    <color name="accent_soft">#334C8DFF</color>
+    <color name="accent_press">#7FA9FF</color>
+
+    <!-- 权限未授予 / 需要用户操作时的提示色 -->
+    <color name="warning">#FFB020</color>
+    <color name="success">#3DDC97</color>
+
+    <!-- 地图区底色：比卡片再深一档，地图画面压上去才有层次 -->
+    <color name="map_well">#0F151D</color>
+
+    <color name="app_label">#E6EAF0</color>
+    <color name="app_label_dim">#99A0AE</color>
+
+    <!-- ↓↓↓ 以下给 drawable 用：夜间偏深 ↓↓↓ -->
+    <color name="wallpaper_top">#121A26</color>
+    <color name="wallpaper_center">#0D131B</color>
+    <color name="wallpaper_bottom">#080A0D</color>
+    <color name="wallpaper_scrim">#40000000</color>
+
+    <color name="map_card_top">#182333</color>
+    <color name="map_card_center">#121A24</color>
+    <color name="map_card_bottom">#0D1219</color>
+
+    <color name="bottom_bar_solid">#E6141B24</color>
+    <color name="cover_a">#3C4A5C</color>
+    <color name="cover_b">#2A3441</color>
+    <color name="dialog_bg">#F2171C24</color>
+
+    <color name="ctrl_bg">#26FFFFFF</color>
+    <color name="ctrl_bg_pressed">#33FFFFFF</color>
+    <color name="chip_bg">#14FFFFFF</color>
+    <color name="chip_stroke">#1FFFFFFF</color>
+
+    <color name="icon_tint">#FFC8D4E0</color>
+    <color name="icon_strong">#FFFFFF</color>
+    <color name="icon_dim">#FF8A98A8</color>
+
+    <!-- 与 values/colors.xml 同名成对：夜间「浅」= 更暗，红叉提亮保证在深底上够醒目 -->
+    <color name="status_icon_faint">#6E7783</color>
+    <color name="status_icon_mark">#FF6B6B</color>
+    <color name="progress_track">#33FFFFFF</color>
+    <color name="switch_track">#44FFFFFF</color>
+</resources>

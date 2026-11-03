@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  状态栏蓝牙 · 已关闭：浅灰符文 + 红色叉。
+  和 Wi-Fi 的「关」态同构（浅本体 + 红叉），不再用斜杠 —— 理由见 ic_status_wifi_off.xml。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M6.9,7 L17.1,17 L12,21.7 L12,2.3 L17.1,7 L6.9,17"
+        android:strokeColor="@color/status_icon_faint"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.95" />
+
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M5.4,5.4 L18.6,18.6"
+        android:strokeColor="@color/status_icon_mark"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.3" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M18.6,5.4 L5.4,18.6"
+        android:strokeColor="@color/status_icon_mark"
+        android:strokeLineCap="round"
+        android:strokeWidth="2.3" />
+</vector>

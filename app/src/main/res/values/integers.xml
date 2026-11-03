@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  歌词可见行数：按**屏幕高度**分三档，必须是奇数（当前句永远在正中）。
+
+    紧凑档（< 600dp 高）      3 行 —— 这个高度下 5 行每行只剩 10dp 左右，字会被裁
+    标准档（>= 600dp 高）     5 行
+    大屏档（>= 1400dp 宽）    7 行 —— 例如 1920×1080@160dpi 这类大屏车机
+
+  行本身由 HomeFragment.buildLyricRows() 按这个值生成，布局里不再写死。
+-->
+<resources>
+    <integer name="lyric_lines">3</integer>
+</resources>

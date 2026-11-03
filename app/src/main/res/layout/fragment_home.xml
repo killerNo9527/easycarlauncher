@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  首页骨架（沿用示例应用的 fragment_home 结构）：
+    ConstraintLayout#fg_home
+      ├ map_host                 左：地图区（覆盖层窗口的锚点，本身只是一块占位面）
+      └ theme_content_container  右：卡片容器，宽度 = 屏宽 22%（1920 上约 420dp）
+          └ home_theme_host      主题宿主，代码里 inflate home_theme_classic
+
+  地图区为什么还要留一块 View：
+    覆盖层是独立系统窗口，不能做任何 View 的父容器。卡片本身必须存在，
+    用来量出矩形（getLocationOnScreen）、承接未授权时的空态、以及覆盖层隐藏时的落点。
+-->
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/fg_home"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <FrameLayout
+        android:id="@+id/map_host"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="@dimen/content_padding_end"
+        android:layout_marginTop="@dimen/status_bar_height"
+        android:layout_marginEnd="@dimen/right_container_card_spacing"
+        android:layout_marginBottom="@dimen/home_bottom_margin"
+        android:background="@drawable/bg_map_placeholder"
+        android:clickable="true"
+        android:focusable="true"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/theme_content_container"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- 空态：未选地图 / 未授权 / 覆盖层隐藏时露出来的内容 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:alpha="0.9"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_map_pin" />
+
+            <TextView
+                android:id="@+id/map_hint_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:includeFontPadding="false"
+                android:text="地图"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/map_title_text_size" />
+
+            <TextView
+                android:id="@+id/map_hint_desc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginHorizontal="40dp"
+                android:gravity="center"
+                android:lineSpacingExtra="3dp"
+                android:maxWidth="420dp"
+                android:text="点按选择地图应用"
+                android:textColor="@color/text_tertiary"
+                android:textSize="@dimen/map_desc_text_size" />
+
+            <TextView
+                android:id="@+id/map_action"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@drawable/bg_action_pill"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="9dp"
+                android:text="选择地图"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/map_action_text_size" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!--
+      右栏：示例应用里的 theme_content_container
+      marginTop 必须和 map_host 一样用 status_bar_height：右栏第一张卡的顶边要和
+      地图卡顶边齐平。这里原本是 content_padding_top（39dp），比地图卡的 38dp 低 1dp，
+      再叠上第一张卡自己的 8dp 间距，视觉上就是「右栏整体往下掉了一截」。
+    -->
+    <FrameLayout
+        android:id="@+id/theme_content_container"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/status_bar_height"
+        android:layout_marginEnd="@dimen/content_padding_end"
+        android:layout_marginBottom="@dimen/home_bottom_margin"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintWidth_percent="0.22">
+
+        <FrameLayout
+            android:id="@+id/home_theme_host"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </FrameLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

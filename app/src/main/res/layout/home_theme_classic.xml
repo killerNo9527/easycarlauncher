@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  右栏卡片编排（对照示例应用的 home_theme_classic_v1）。
+
+  时间卡固定 96dp（内容简单，不参与权重），其余按 音乐 : 负载 : 天气 = 56 : 17 : 16 分权重。
+  行程卡已移除（车辆数据在这台车机上取不到，删掉不留占位），腾出的高度归到音乐卡，
+  歌词区反而更宽裕。这样 617 / 720 / 1022dp 三种可用高度都自洽，不会像写死 dp 那样在矮屏溢出。
+
+  顺序不再由这里的 XML 决定：HomeFragment.applyCardOrder 会按配置把这几张卡重排，
+  谁在上谁下看「设置 → 卡片 → 卡片顺序」。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/right_container_widgets"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <include
+        android:id="@+id/time_date_card"
+        layout="@layout/include_time_date_card"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/time_card_height" />
+
+    <include
+        android:id="@+id/music_card"
+        layout="@layout/include_music_card"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/right_container_card_spacing"
+        android:layout_weight="56" />
+
+    <include
+        android:id="@+id/monitor_card"
+        layout="@layout/include_monitor_card"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/right_container_card_spacing"
+        android:layout_weight="17" />
+
+    <include
+        android:id="@+id/weather_card"
+        layout="@layout/include_weather_card"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/right_container_card_spacing"
+        android:layout_weight="16" />
+
+</LinearLayout>

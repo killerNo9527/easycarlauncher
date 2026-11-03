@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 桌面本体不需要任何危险权限：应用列表用 PackageManager，壁纸用本地文件 -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+    <!-- 天气卡：向自己的天气代理服务要数据（密钥在服务端，不进安装包） -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- 天气城市自动定位：取一次坐标交给代理，由代理反查城市名。
+         这两个是危险权限，只有用户在设置里打开「自动定位城市」时才申请；
+         拒绝也不影响其它功能，城市回退成手填那个。 -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- 均衡器挂 session 0（全局输出混音）必需；normal 权限，安装即得 -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- 应用列表长按「卸载」：API 26+ 起，非系统应用发起 ACTION_DELETE 必须持有这个权限，
+         否则 PackageInstaller 的 UninstallerActivity 直接拒绝（日志里是
+         "does not have android.permission.REQUEST_DELETE_PACKAGES"），界面上什么都不弹。
+         它是 normal 权限，声明即得，不需要运行时申请。 -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
+    <!-- ===== 状态栏右侧的四个真控件（见 ui/StatusTray） =====
+         Wi-Fi：读状态 + 真的开关。两个都是 normal 权限，装包即得。
+         蓝牙：同上（BLUETOOTH_ADMIN 才允许 enable/disable，只要 BLUETOOTH 只能读）。
+         信号：READ_PHONE_STATE 是 dangerous —— 桌面不主动弹框，只在用户点信号图标时申请一次；
+               没授权就把信号格画成灰色，不拿"满格"糊弄。 -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- 地图卡走广播控制高德悬浮窗，桌面自己不需要浮窗权限。
+         保留这一项只给「嵌入可行性探针」用（它要真的建一个 TYPE_APPLICATION_OVERLAY 窗口做实证） -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <application
+        android:name=".LauncherApp"
+        android:allowBackup="true"
+        android:hardwareAccelerated="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:supportsRtl="false"
+        android:theme="@style/Theme.CarLauncher">
+
+        <activity
+            android:name=".LauncherActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|density"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:resizeableActivity="false"
+            android:screenOrientation="landscape"
+            android:windowSoftInputMode="adjustPan">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".settings.MapAppPickerActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|density"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <activity
+            android:name=".settings.ShortcutPickerActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|density"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <activity
+            android:name=".settings.SettingsActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|density"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <activity
+            android:name=".eq.EqActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|density"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+    </application>
+
+</manifest>

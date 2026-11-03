@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  状态栏左侧「快捷应用」未开启时的占位：三个点。
+
+  为什么放三个点而不是什么都不放：
+    左上角空着的话，没人知道那里可以放东西；三个点是"这里还有更多"的通用符号，
+    点一下能直接进到设置里把开关打起来。
+  颜色用 text_tertiary（最浅一档）：它是提示，不该和左右两边的真图标抢注意力。
+
+  直径 4.8 / 中点 5.8 · 12 · 18.2：r=2 那版在 32dp 的可见框里只有 5px 出头，
+  实际看起来像三粒灰点、不像一个图标；放大到 6.4px 才和旁边的时钟对得上比例。
+  圆形起点是「圆心上方 r」：`M x,9.6 a 2.4,2.4 …0,4.8 …0,-4.8` 得到圆心 (x,12)、直径 4.8。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="@color/text_tertiary"
+        android:pathData="M5.8,9.6 a2.4,2.4 0 1,1 0,4.8 a2.4,2.4 0 1,1 0,-4.8 z" />
+    <path
+        android:fillColor="@color/text_tertiary"
+        android:pathData="M12,9.6 a2.4,2.4 0 1,1 0,4.8 a2.4,2.4 0 1,1 0,-4.8 z" />
+    <path
+        android:fillColor="@color/text_tertiary"
+        android:pathData="M18.2,9.6 a2.4,2.4 0 1,1 0,4.8 a2.4,2.4 0 1,1 0,-4.8 z" />
+</vector>

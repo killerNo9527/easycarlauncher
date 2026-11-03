@@ -1,0 +1,17 @@
+# 仓库内统一 LF，避免 Windows / macOS 检出后满屏 diff
+* text=auto eol=lf
+
+# 批处理不能用 LF，否则 cmd 解析出错
+*.bat text eol=crlf
+
+# 二进制，不做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.jar binary
+*.apk binary
+*.aab binary
+
+# gradlew 是 POSIX shell 脚本，必须 LF
+gradlew text eol=lf

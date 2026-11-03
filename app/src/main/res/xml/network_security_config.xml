@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  天气代理服务允许明文 HTTP。
+
+  为什么开：密钥在服务端替我们挡着，所以「服务地址」可以是局域网里的自建服务
+  （http://192.168.1.5:8787），也可以是自己搭的 NAS —— 强制 HTTPS 会把这类用法直接堵死。
+  用 Cloudflare Worker 那种 https 地址时，走的仍然是加密连接，这条配置不会降低安全性。
+
+  代价要说清楚：走 http 时令牌是明文传输的，同一局域网里理论上能被抓包。
+  在意这点就把服务挂在 https 后面（Worker 默认就是）。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

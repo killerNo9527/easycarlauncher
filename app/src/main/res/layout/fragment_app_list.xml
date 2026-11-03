@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingStart="@dimen/app_list_padding_horizontal"
+    android:paddingTop="@dimen/app_list_padding_vertical"
+    android:paddingEnd="@dimen/app_list_padding_horizontal"
+    android:paddingBottom="@dimen/app_list_padding_vertical">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/app_grid"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:overScrollMode="never" />
+
+    <TextView
+        android:id="@+id/app_empty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="@string/app_list_empty"
+        android:textColor="@color/text_tertiary"
+        android:textSize="@dimen/card_body_text_size"
+        android:visibility="gone" />
+
+</FrameLayout>

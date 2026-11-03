@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  日间（浅色）色板 —— 系统处于 light 时用这一套。
+  夜间色板在 values-night/colors.xml，两份必须**同名成对**出现，
+  任何新增的颜色都要同时加到两个文件里，否则切换后会出现「一半亮一半暗」。
+-->
+<resources>
+    <color name="bg_base">#EDF1F6</color>
+    <color name="bg_scrim">#33FFFFFF</color>
+
+    <!-- 卡片：半透明白 + 自上而下的轻微明度差 -->
+    <color name="card_bg">#F2FFFFFF</color>
+    <color name="card_bg_top">#FAFFFFFF</color>
+    <color name="card_bg_bottom">#EDFFFFFF</color>
+    <color name="card_bg_solid">#FFFFFF</color>
+    <color name="card_stroke">#1A0B1220</color>
+    <color name="card_stroke_soft">#0F0B1220</color>
+
+    <color name="text_primary">#121821</color>
+    <color name="text_secondary">#5B6472</color>
+    <color name="text_tertiary">#8D96A4</color>
+
+    <color name="accent">#2F6FE0</color>
+    <color name="accent_soft">#2A2F6FE0</color>
+    <color name="accent_press">#1E56C8</color>
+
+    <!-- 权限未授予 / 需要用户操作时的提示色 -->
+    <color name="warning">#C97A00</color>
+    <color name="success">#128A62</color>
+
+    <!-- 地图区底色：比卡片再深一档，地图画面压上去才有层次 -->
+    <color name="map_well">#E2E8F1</color>
+
+    <color name="app_label">#1B2532</color>
+    <color name="app_label_dim">#5B6472</color>
+
+    <!-- ↓↓↓ 以下给 drawable 用：日间偏亮 ↓↓↓ -->
+    <color name="wallpaper_top">#F4F7FB</color>
+    <color name="wallpaper_center">#E8EEF6</color>
+    <color name="wallpaper_bottom">#DCE4EF</color>
+    <color name="wallpaper_scrim">#26FFFFFF</color>
+
+    <color name="map_card_top">#E9EFF7</color>
+    <color name="map_card_center">#E2E9F2</color>
+    <color name="map_card_bottom">#DAE3EE</color>
+
+    <color name="bottom_bar_solid">#F4FFFFFF</color>
+    <color name="cover_a">#DDE6F0</color>
+    <color name="cover_b">#CED9E6</color>
+    <color name="dialog_bg">#F8FFFFFF</color>
+
+    <color name="ctrl_bg">#14000000</color>
+    <color name="ctrl_bg_pressed">#22000000</color>
+    <color name="chip_bg">#0D000000</color>
+    <color name="chip_stroke">#1A000000</color>
+
+    <color name="icon_tint">#3D4A5C</color>
+    <color name="icon_strong">#1B2532</color>
+    <color name="icon_dim">#77808F</color>
+
+    <!--
+      状态栏「关」态的两个专用色：
+        faint = 图标本体，比 text_secondary 再浅一档 —— 关掉的东西不该和「开」抢注意力；
+        mark  = 盖在上面的红色叉，全套状态栏只在这里用红，红 = 不可用。
+      红叉和图标本体是两个独立颜色，所以这两处不能再用 app:tint（tint 会把两者压成一个色）。
+    -->
+    <color name="status_icon_faint">#A9B2BF</color>
+    <color name="status_icon_mark">#E5484D</color>
+    <color name="progress_track">#22000000</color>
+    <color name="switch_track">#33000000</color>
+</resources>

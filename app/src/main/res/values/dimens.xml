@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  紧凑档：**可用高度 < 600dp 的短屏**（例如 1920×740 @240dpi = 1280×493dp）。
+  标准档在 values-h600dp（1080p/240dpi = 1280×720dp 落那一档），大屏在 values-w1400dp。
+
+  为什么按「高度」分档而不是宽度：
+    车机换屏幕比例一般是「宽度不变、高度变矮」（1920×1080 → 1920×740），
+    宽度档位（w1400dp）完全感知不到，只有高度能表达「这一屏矮了」。
+  Android 的限定符只能写「最小高度」，没有「最大高度」，所以这里反过来：
+    values/            = 默认 = 紧凑（矮屏）
+    values-h600dp/     = ≥600dp 才用标准档
+  限定符优先级里 available width 在 available height 之前，所以 1920dp 宽的大屏仍走
+  values-w1400dp，不会被 h600dp 抢走。
+
+  短屏上真正的问题不是字大，而是**四张卡 + 5 行歌词根本放不下**：按标准档算，
+  右栏只有 335dp，音乐卡勉强 150dp，负载卡 50dp，直接裁字。
+  所以这一档同时做三件事：① 整体缩一档；② 收缩框架（状态栏/底栏/边距）；
+  ③ 歌词从 5 行降到 3 行（@integer/lyric_lines）——只靠缩字号是不够的。
+-->
+<resources>
+    <!-- 栅格 -->
+    <dimen name="sidebar_width">56dp</dimen>
+    <dimen name="right_container_width">240dp</dimen>
+    <dimen name="right_container_card_spacing">6dp</dimen>
+    <dimen name="content_padding_end">12dp</dimen>
+    <dimen name="home_card_corner_radius">14dp</dimen>
+
+    <!-- 时间卡用固定高（内容简单，不参与权重） -->
+    <dimen name="time_card_height">52dp</dimen>
+
+    <!-- 卡片内边距 -->
+    <dimen name="card_padding_horizontal">12dp</dimen>
+    <dimen name="card_padding_vertical">8dp</dimen>
+
+    <!-- 顶部状态栏：时间 / 日期各自一档字号，日期单独给是因为以前借的是 card_body_text_size，
+         卡片字号一动状态栏就跟着变 -->
+    <dimen name="status_bar_height">32dp</dimen>
+    <dimen name="status_bar_text_size">16sp</dimen>
+    <dimen name="status_bar_date_text_size">12sp</dimen>
+
+    <!-- 状态栏右侧图标：触摸区 / 图标内缩（触摸区 - 2×内缩 = 图标可视尺寸）/ 图标间距 -->
+    <dimen name="status_icon_touch">24dp</dimen>
+    <dimen name="status_icon_inset">4dp</dimen>
+    <dimen name="status_icon_gap">6dp</dimen>
+
+    <!-- 状态栏左侧快捷应用：应用图标本身要能认出是谁，所以比右侧状态图标大一号。
+         gap 是「触摸区之间」的距离，图标之间的实际空隙 = gap + 两侧内缩 -->
+    <dimen name="status_shortcut_touch">30dp</dimen>
+    <dimen name="status_shortcut_inset">4dp</dimen>
+    <dimen name="status_shortcut_gap">10dp</dimen>
+
+    <!-- 选择页「已选」行里的小图标 -->
+    <dimen name="shortcut_row_icon">26dp</dimen>
+    <dimen name="shortcut_row_label">90dp</dimen>
+
+    <!-- 文字 -->
+    <dimen name="time_card_time_text_size">30sp</dimen>
+    <dimen name="time_card_date_text_size">11sp</dimen>
+    <dimen name="music_title_text_size">17sp</dimen>
+    <dimen name="music_artist_text_size">13sp</dimen>
+    <dimen name="card_title_text_size">11sp</dimen>
+    <dimen name="card_body_text_size">10sp</dimen>
+
+    <!-- 音乐卡内部 -->
+    <dimen name="album_cover_size">44dp</dimen>
+    <dimen name="lyric_line_height">24dp</dimen>
+    <dimen name="lyric_text_size">13sp</dimen>
+    <dimen name="lyric_current_text_size">17sp</dimen>
+    <dimen name="lyric_translation_text_size">11sp</dimen>
+
+    <!-- 底栏「当前播放」：封面 / 歌名 / 歌手（原来写死在布局里，三档没法分别调） -->
+    <dimen name="bottom_cover_size">46dp</dimen>
+    <dimen name="bottom_title_text_size">16sp</dimen>
+    <dimen name="bottom_artist_text_size">12sp</dimen>
+    <dimen name="control_btn_small">40dp</dimen>
+    <dimen name="control_btn_play">50dp</dimen>
+    <dimen name="control_gap">24dp</dimen>
+
+    <!-- 应用列表 -->
+    <dimen name="app_icon_size">44dp</dimen>
+    <dimen name="app_grid_spacing">10dp</dimen>
+    <dimen name="app_label_text_size">10sp</dimen>
+    <dimen name="app_list_padding_horizontal">24dp</dimen>
+    <dimen name="app_list_padding_vertical">16dp</dimen>
+
+    <!-- 控制键图标 -->
+    <dimen name="control_icon_play">18sp</dimen>
+    <dimen name="control_icon_small">10sp</dimen>
+    <dimen name="control_icon_inset">8dp</dimen>
+    <dimen name="control_gap_horizontal">12dp</dimen>
+
+    <!-- 地图区空态 -->
+    <dimen name="map_title_text_size">15sp</dimen>
+    <dimen name="map_desc_text_size">11sp</dimen>
+    <dimen name="map_action_text_size">11sp</dimen>
+
+    <!-- 卡片里的数值（负载） -->
+    <dimen name="card_value_text_size">14sp</dimen>
+
+    <!-- 天气卡：温度是大号数字，比负载数值再大两档 -->
+    <dimen name="weather_temp_text_size">26sp</dimen>
+
+    <!-- 设置页：能滚动，按标准档走，不缩 -->
+    <dimen name="setting_section_text_size">12sp</dimen>
+    <dimen name="setting_row_padding">14dp</dimen>
+    <dimen name="setting_title_text_size">15sp</dimen>
+    <dimen name="setting_desc_text_size">12sp</dimen>
+
+    <!--
+      框架：短屏把底栏和四周留白一起收，给卡片腾高度
+      算法同 w1400dp 档：inset = 底栏高 + 底距（不留余量），卡片离底 = 卡片间距。
+    -->
+    <dimen name="bottom_bar_height">62dp</dimen>
+    <dimen name="bottom_bar_margin_bottom">8dp</dimen>
+    <dimen name="pager_bottom_inset">70dp</dimen>
+    <dimen name="home_bottom_margin">6dp</dimen>
+
+    <!-- 底栏播放键：按底栏高度取比例（主键 ≈ 0.64 × 高，副键 ≈ 0.5 × 高） -->
+    <dimen name="bottom_btn_side">32dp</dimen>
+    <dimen name="bottom_btn_play">40dp</dimen>
+    <dimen name="bottom_btn_gap">16dp</dimen>
+    <dimen name="bottom_btn_side_inset">4dp</dimen>
+    <dimen name="bottom_btn_play_inset">9dp</dimen>
+</resources>

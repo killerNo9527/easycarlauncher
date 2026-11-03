@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  天气卡：城市 / 大号温度 / 天气文字 / 今日最高最低 / 更新时间。
+
+  为什么不用天气图标：这套卡片里没有一个图标资产，突然塞一组彩色小图会打断整列的黑白灰。
+  温度用字号说话，天气用两个字说话，够了 —— 瞄一眼就知道外面几度。
+
+  三种状态共用一套控件，靠文案切换（见 HomeFragment.renderWeather）：
+    未登录 → 温度「——」、副文案「点此登录」
+    正常   → 23° / 晴 / 最高 27° 最低 18°
+    失败   → 温度「——」、副文案「点此重试」
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_card"
+    android:clickable="true"
+    android:focusable="true"
+    android:paddingHorizontal="@dimen/card_padding_horizontal"
+    android:paddingTop="@dimen/card_padding_vertical"
+    android:paddingBottom="@dimen/card_padding_vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!--
+              市名 + 区名一组靠左，更新时间靠右。
+              区名单独一个控件（而不是拼进市名字符串）是因为要压小一号、换淡一档色：
+              「枣庄 市中」读起来是「枣庄的市中」，拼成同样字号反而像两个并列的地名。
+              区名给 wrap_content 不参与收缩 —— 空间不够时宁可省略市名，也别把区名截掉。
+            -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/weather_city"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:text="@string/card_weather_title"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="@dimen/card_title_text_size" />
+
+                <TextView
+                    android:id="@+id/weather_district"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="@dimen/card_body_text_size"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/weather_at"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:includeFontPadding="false"
+                android:textColor="@color/text_tertiary"
+                android:textSize="@dimen/card_body_text_size" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/weather_temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFeatureSettings="tnum"
+                android:includeFontPadding="false"
+                android:text="--"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/weather_temp_text_size" />
+
+            <TextView
+                android:id="@+id/weather_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="start"
+                android:maxLines="2"
+                android:text=""
+                android:textColor="@color/text_secondary"
+                android:textSize="@dimen/music_artist_text_size" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/weather_range"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="@color/text_tertiary"
+            android:textSize="@dimen/card_body_text_size" />
+    </LinearLayout>
+
+</FrameLayout>

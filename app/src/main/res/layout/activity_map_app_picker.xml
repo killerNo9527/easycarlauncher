@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_base"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/app_list_padding_horizontal"
+        android:paddingTop="18dp"
+        android:paddingEnd="@dimen/app_list_padding_horizontal"
+        android:paddingBottom="4dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="选择悬浮地图"
+                android:textColor="@color/text_primary"
+                android:textSize="@dimen/music_title_text_size" />
+
+            <TextView
+                android:id="@+id/picker_current"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="当前：未选择"
+                android:textColor="@color/accent"
+                android:textSize="@dimen/setting_desc_text_size" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/btn_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_app_focus"
+            android:focusable="true"
+            android:paddingHorizontal="18dp"
+            android:paddingVertical="8dp"
+            android:text="返回"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/setting_desc_text_size" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="@dimen/app_list_padding_horizontal"
+        android:paddingTop="6dp"
+        android:paddingEnd="@dimen/app_list_padding_horizontal"
+        android:paddingBottom="10dp"
+        android:text="必须使用悬浮修改版地图，官方版本均不支持悬浮窗；选好后点地图区即可启动，并延时回到桌面"
+        android:textColor="@color/text_tertiary"
+        android:textSize="@dimen/setting_desc_text_size" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/picker_grid"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:overScrollMode="never"
+        android:paddingStart="@dimen/app_list_padding_horizontal"
+        android:paddingEnd="@dimen/app_list_padding_horizontal"
+        android:paddingBottom="32dp" />
+
+</LinearLayout>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 日间：状态栏/导航栏图标用深色，才能在浅色背景上看清 -->
+    <bool name="light_system_bars">true</bool>
+</resources>

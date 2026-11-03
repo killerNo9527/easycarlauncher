@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      歌词行：5 行等分（高度由 LinearLayout weight 决定），当前行由代码放大一档。
+      gravity=center → 每行水平居中；垂直方向由行高等分自然居中。
+    -->
+    <style name="LyricLine">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">@dimen/lyric_line_height</item>
+        <item name="android:gravity">center</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">@dimen/lyric_text_size</item>
+    </style>
+</resources>
