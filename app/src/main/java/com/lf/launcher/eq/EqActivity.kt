@@ -51,8 +51,11 @@ class EqActivity : AppCompatActivity() {
 
         // 和桌面同一套系统栏策略：默认沉浸式独占整屏；用户开了「使用系统状态栏」时
         // 这里就布局到栏下面再补 padding。不处理的话系统时钟会压在「均衡器」标题上。
+        //
+        // 必须带上自定义四边留白（withCustomPadding 默认 true）：留白是「给内容让出安全区」
+        // 的一部分，桌面按它避让了、均衡器页不避让，同一台车机上车两个页面就会差一圈边距。
         SystemUi.apply(this)
-        SystemUi.attachContentInset(findViewById(R.id.eq_root), withCustomPadding = false)
+        SystemUi.attachContentInset(findViewById(R.id.eq_root))
 
         editor = findViewById(R.id.eq_editor)
         statusView = findViewById(R.id.eq_status)
@@ -124,6 +127,8 @@ class EqActivity : AppCompatActivity() {
         super.onResume()
         // 从别的页面回来时 systemUiVisibility 可能被系统清掉，重来一次
         SystemUi.apply(this)
+        // 留白是在设置页改的，insets 不会自己重发：不主动刷一次，改完回来仍是旧边距
+        SystemUi.refresh(findViewById(R.id.eq_root))
         if (enabled) pushToEngine()
     }
 

@@ -95,6 +95,7 @@ object Keys {
     const val MAP_BORDER = "map_border"                   // 是否绘制地图区边框
     const val MAP_BORDER_COLOR = "map_border_color"
     const val AMAP_DAY_NIGHT = "amap_day_night"           // 用高德官方广播协议同步日夜
+    const val AMAP_NAV_NUDGE = "amap_nav_nudge"           // 开始导航时抖一下窗口，修视口错位
     const val AUTO_MAP_ON_OPEN = "auto_map_on_open"       // 打开桌面时自动拉起地图再切回
 
     // 均衡器（全局，31 段）
@@ -117,4 +118,7 @@ object Defaults {
 
     /** 高德日夜跟随桌面（用 AmapAuto 标准广播协议推 KEY_TYPE=10048） */
     const val AMAP_DAY_NIGHT = true
+
+    /** 开始导航时自动校正悬浮窗视口 */
+    const val AMAP_NAV_NUDGE = true
 }

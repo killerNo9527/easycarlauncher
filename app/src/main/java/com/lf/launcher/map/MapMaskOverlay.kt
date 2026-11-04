@@ -1,6 +1,7 @@
 package com.lf.launcher.map
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -20,6 +21,7 @@ import android.view.View
 import android.view.WindowManager
 import androidx.core.content.ContextCompat
 import com.lf.launcher.R
+import com.lf.launcher.ui.Appearance
 
 /**
  * 给高德悬浮窗补上卡片圆角。
@@ -76,6 +78,19 @@ object MapMaskOverlay {
     private var lastRadius = 0f
 
     /**
+     * 上一次绘制时是日间还是夜间。
+     *
+     * 必须参与缓存判定：遮罩是独立窗口，位图在 [CornerFrameView.onSizeChanged] 里一次性烘好，
+     * 之后只剩 `drawBitmap`。日夜切换时卡片矩形**一点没变**，只比几何就会命中缓存直接返回，
+     * 遮罩上的那圈描边和四角壁纸永远停在上一个配色 —— 表现就是切了日夜得重进桌面才正常。
+     */
+    private var lastNight: Boolean? = null
+
+    /** 最近一次 [show] 的入参，供延后重组时取最新值（见 [show] 里的 `again`） */
+    private var lastCtx: Context? = null
+    private var lastBackground: List<View> = emptyList()
+
+    /**
      * 上一次 addView 失败的时刻。
      *
      * 没有悬浮窗权限时 addView 必然抛 BadTokenException，而 [show] 会被布局变化反复调用，
@@ -102,13 +117,18 @@ object MapMaskOverlay {
         val app = ctx.applicationContext
         val themed = ctx
         val r = Rect(rect)
+        // 日夜也一起比：几何不变但配色变了，照样得重建位图
+        val night = Appearance.resolveNight(themed)
 
-        // 几何没变就别重建：syncMapCard 会被布局变化反复触发，
+        // 几何 + 日夜都没变就别重建：syncMapCard 会被布局变化反复触发，
         // 每次 remove/add 会让窗口闪，还会反过来触发新一轮 layout
-        if (host != null && lastRect == r && lastRadius == radiusPx) return
+        if (host != null && lastRect == r && lastRadius == radiusPx && lastNight == night) return
 
         // 刚失败过（多半是没权限）就歇一会儿，别把 show 的高频调用放大成重试风暴
         if (failedAt != 0L && SystemClock.elapsedRealtime() - failedAt < FAIL_RETRY_MS) return
+
+        lastCtx = themed
+        lastBackground = background
 
         detach(app)
         attach(app, themed, r, radiusPx, background)
@@ -116,14 +136,20 @@ object MapMaskOverlay {
         // 高德收到广播后才建窗口，可能晚于我们 → 延后再压一次
         pending?.let { main.removeCallbacks(it) }
         val again = Runnable {
-            if (host != null) {
-                detach(app)
-                attach(app, themed, r, radiusPx, background)
-            }
+            // 用最新一次 show 的参数，不是这个 Runnable 创建时捕获的旧值：
+            // 日夜切换会重建 Activity，旧 Runnable 可能还压在队列里，拿旧 Context
+            // 重组会把刚刷新的配色又退回上一套
+            val c = lastCtx ?: return@Runnable
+            val rr = lastRect ?: return@Runnable
+            if (host == null) return@Runnable
+            val appCtx = c.applicationContext
+            detach(appCtx)
+            attach(appCtx, c, Rect(rr), lastRadius, lastBackground)
         }
         pending = again
         lastRect = r
         lastRadius = radiusPx
+        lastNight = night
         // 没挂上就没有「压 z 序」这回事，别再排一次
         if (host != null) main.postDelayed(again, REATTACH_DELAY)
     }
@@ -133,6 +159,9 @@ object MapMaskOverlay {
         pending = null
         lastRect = null
         lastRadius = 0f
+        lastNight = null
+        lastCtx = null
+        lastBackground = emptyList()
         host?.context?.applicationContext?.let { detach(it) }
     }
 
@@ -152,6 +181,7 @@ object MapMaskOverlay {
 
         val v = CornerFrameView(
             app,
+            themed,
             rect,
             background,
             ContextCompat.getDrawable(themed, R.drawable.bg_map_placeholder)?.mutate(),
@@ -213,13 +243,18 @@ object MapMaskOverlay {
 
     /**
      * 只画「卡片以外」的像素，见类注释里的三段式。
+     *
+     * [themedCtx] 必须是 Activity 的 Context（不是 applicationContext）：固定日间/夜间时
+     * uiMode 覆盖只挂在它身上，用应用级 Context 取 drawable 会拿到系统默认那一套颜色。
+     * 它只用于配置变化时重新取资源，而本 View 随 [hide] 一起移除，不会把 Activity 拖住。
      */
     private class CornerFrameView(
         ctx: Context,
+        private val themedCtx: Context,
         private val cardRect: Rect,
         private val backgroundLayers: List<View>,
-        private val cardShape: Drawable?,
-        private val wallpaper: Drawable?,
+        private var cardShape: Drawable?,
+        private var wallpaper: Drawable?,
     ) : View(ctx) {
 
         var radiusPx = 0f
@@ -234,6 +269,23 @@ object MapMaskOverlay {
         override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
             layer?.recycle()
             layer = buildLayer(w, h)
+        }
+
+        /**
+         * 日夜切换：资源换了，位图却还是按旧配置烘的那一张。
+         *
+         * 位图只在 [onSizeChanged] 里生成一次，卡片矩形不变时永远不会重来；
+         * 描边色与四角壁纸色就停在上一个配色上 —— 用户看到的「切了日夜，圆角遮盖没跟着换，
+         * 得重进一次桌面」就是这个。这里不依赖外面重新调 `show()`：Activity 重建过程中
+         * Fragment 未必来得及调，靠这条回调才保证一定刷新。
+         */
+        override fun onConfigurationChanged(newConfig: Configuration?) {
+            super.onConfigurationChanged(newConfig)
+            cardShape = ContextCompat.getDrawable(themedCtx, R.drawable.bg_map_placeholder)?.mutate()
+            wallpaper = ContextCompat.getDrawable(themedCtx, R.drawable.bg_wallpaper_default)?.mutate()
+            layer?.recycle()
+            layer = buildLayer(width, height)
+            invalidate()
         }
 
         private fun buildLayer(w: Int, h: Int): Bitmap? {

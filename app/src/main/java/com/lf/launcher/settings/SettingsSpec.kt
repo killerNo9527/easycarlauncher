@@ -82,7 +82,8 @@ object SettingsSpec {
             val pad = com.lf.launcher.ui.SystemUi.customPaddingDp()
             items += SettingItem.ActionItem(
                 "全局四边留白",
-                "系统栏占位之外再补的边距（dp）。车机系统栏高度常报不准，用这里对；只作用于桌面",
+                "系统栏占位之外再补的边距（dp）。车机系统栏高度常报不准，用这里对；" +
+                    "桌面和均衡器页都按它让位",
                 value = "上${pad[0]} 下${pad[1]} 左${pad[2]} 右${pad[3]}",
             ) {
                 PaddingDialog.show(context) {
@@ -162,6 +163,26 @@ object SettingsSpec {
                 "需要高德车机版 1.4.2 以上；手机版或未适配的改版高德不会响应",
             default = Defaults.AMAP_DAY_NIGHT,
         )
+        items += SettingItem.SwitchItem(
+            Keys.AMAP_NAV_NUDGE, "开始导航时校正地图视口",
+            "高德刚进入导航的那一帧会把缩放和居中算错（自车偏、右侧被裁）。" +
+                "开启后会在那一刻把悬浮窗抖一下逼它重排，效果等同于点一次「全览」再返回",
+            default = Defaults.AMAP_NAV_NUDGE,
+        )
+        items += SettingItem.ActionItem(
+            "立即校正一次",
+            "导航过程中发现地图偏了，点这里立刻重排，不用等下一次开始导航",
+            value = null,
+        ) {
+            val rect = com.lf.launcher.map.AmapPlusController.currentRect()
+            val ok = rect != null &&
+                com.lf.launcher.map.AmapPlusController.nudge(context, rect)
+            Toast.makeText(
+                context,
+                if (ok) "已触发重排" else "地图卡当前没有在显示，无法校正",
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
         items += SettingItem.Section("天气")
         items += SettingItem.SwitchItem(
             Keys.CARD_WEATHER, "天气卡",

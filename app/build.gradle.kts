@@ -12,8 +12,8 @@ android {
         minSdk = 28
         // 车机 Android 9：targetSdk 停在 28，可避开后台启动限制与分区存储
         targetSdk = 28
-        versionCode = 51
-        versionName = "0.9.40-m51"
+        versionCode = 53
+        versionName = "0.9.42-m53"
     }
 
     buildTypes {

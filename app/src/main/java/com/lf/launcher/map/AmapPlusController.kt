@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Rect
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 
 /**
@@ -46,6 +48,9 @@ object AmapPlusController {
     private var shown = false
     private var lastRect: Rect? = null
     private var lastZero = false
+
+    private val main = Handler(Looper.getMainLooper())
+    private var nudgePending: Runnable? = null
 
     /** 探测当前设备上有没有应用监听 showmap。结果缓存，`invalidate()` 可清 */
     fun probe(context: Context): Support {
@@ -109,8 +114,67 @@ object AmapPlusController {
         return true
     }
 
+    /**
+     * 抖一下窗口，逼高德重新布局一次。
+     *
+     * ## 为什么需要
+     *
+     * 高德在这个悬浮窗里**进入导航的那一刻**会用错视口：自车不居中、画面右侧被裁、
+     * 缩放偏大。但**手动点一次「全览」再自动回到导航就恢复正常**——说明它有能力算对，
+     * 只是那个转换点没重算。用户从别的桌面（全屏）开始导航再切回来也正常，同样印证
+     * 这点：窗口尺寸变过，它就重排了。
+     *
+     * 实测确认过两件事，所以这个办法可行：
+     * 1. 收到 showmap 只是 `updateViewLayout`，**窗口对象不重建**（Window hash 不变），
+     *    所以不会整块闪烁；
+     * 2. 改窗口尺寸会让高德的地图内容真的重排（全屏 ↔ 卡片切换时能看到缩放变化）。
+     *
+     * 做法就是把宽度加几个像素、200ms 后再改回来。这点变化肉眼看不出来，
+     * 但对高德来说是一次实实在在的布局变更，足以触发它重算导航视口。
+     *
+     * @param widenPx 临时加宽多少像素。太小可能被高德忽略，3px 足够且无感
+     * @param restoreMs 保持临时尺寸多久
+     */
+    fun nudge(context: Context, rect: Rect, widenPx: Int = 3, restoreMs: Long = 220L): Boolean {
+        if (rect.width() <= 0 || rect.height() <= 0) return false
+        // 没在显示（进全屏导航、桌面不可见）时抖窗口没有意义，还会把窗口意外唤出来
+        if (!shown) {
+            Log.i(TAG, "nudge 跳过：悬浮窗当前未显示")
+            return false
+        }
+        nudgePending?.let { main.removeCallbacks(it) }
+
+        val wide = Rect(rect.left, rect.top, rect.right + widenPx, rect.bottom)
+        pushRaw(context, wide)
+        val back = Runnable {
+            nudgePending = null
+            pushRaw(context, rect)
+            Log.i(TAG, "nudge 恢复 ${rect.width()}x${rect.height()}")
+        }
+        nudgePending = back
+        main.postDelayed(back, restoreMs)
+        Log.i(TAG, "nudge 触发 ${rect.width()} → ${wide.width()}（${restoreMs}ms 后恢复）")
+        return true
+    }
+
+    /** 按给定矩形直接推一次，不碰 shown/lastRect 状态机 */
+    private fun pushRaw(context: Context, rect: Rect) {
+        val support = probe(context)
+        val intent = Intent(ACTION_SHOW).apply {
+            support.packages.firstOrNull()?.let { setPackage(it) }
+            putExtra("x", rect.left)
+            putExtra("y", rect.top)
+            putExtra("w", rect.right)
+            putExtra("h", rect.bottom)
+        }
+        runCatching { context.sendBroadcast(intent) }
+            .onFailure { Log.w(TAG, "pushRaw 失败：$it") }
+    }
+
     /** 请求隐藏。幂等：没显示过就不发 */
     fun hide(context: Context) {
+        nudgePending?.let { main.removeCallbacks(it) }
+        nudgePending = null
         if (!shown) return
         val support = probe(context)
         val intent = Intent(ACTION_HIDE).apply {
@@ -125,6 +189,9 @@ object AmapPlusController {
 
     /** 当前是否处于「已请求显示」状态 */
     fun isShown(): Boolean = shown
+
+    /** 最近一次成功推给高德的窗口矩形；零坐标模式或从未显示时为 null */
+    fun currentRect(): Rect? = lastRect?.let { Rect(it) }
 
     /** 给设置页用的一句话 */
     fun summary(context: Context): String = probe(context).describe
