@@ -143,10 +143,13 @@ object SettingsSpec {
         }
 
         items += SettingItem.Section("地图")
+        val mapPkg = MapAppLauncher.selectedPackage()
         items += SettingItem.ActionItem(
             "当前地图",
             "点按地图区会打开这个应用的全屏导航",
-            value = MapAppLauncher.selectedLabel(context),
+            value = if (mapPkg.isEmpty()) "未选择" else MapAppLauncher.selectedLabel(context),
+            // 没选地图 = 地图卡永远是"选一个地图应用"的空态，属于静默失效，标出来
+            tone = if (mapPkg.isEmpty()) SettingItem.Tone.WARNING else SettingItem.Tone.NORMAL,
         ) {
             context.startActivity(Intent(context, MapAppPickerActivity::class.java))
         }
@@ -309,24 +312,62 @@ object SettingsSpec {
         }
 
         items += SettingItem.Section("权限")
+        // 这两项是在「设置 → 应用 → 权限」里被手动收走之后唯一的自查入口，
+        // 所以状态必须是实时的（SettingsActivity.onResume 会重建整张列表），
+        // 缺的直接标暖色：车机上不点进来看不出来，出问题只会觉得"天气卡不更新了"。
         val missingPermissions = Permissions.missingRuntime(context)
+        val blocked = missingPermissions.isNotEmpty() &&
+            (context as? android.app.Activity)?.let { activity ->
+                missingPermissions.all { Permissions.isBlocked(activity, it) }
+            } == true
         items += SettingItem.ActionItem(
             "运行时权限",
-            "位置：天气卡按定位自动换城市；电话：状态栏信号格数。" +
-                "首次启动时已经统一问过一次，误点拒绝的话在这里补",
-            value = if (missingPermissions.isEmpty()) {
-                "已全部授予"
+            when {
+                missingPermissions.isEmpty() ->
+                    "位置：天气卡按定位自动换城市；电话：状态栏信号格数"
+                blocked ->
+                    "系统已经不给弹框了（被设为不再询问），只能到应用信息页里手动打开"
+                else ->
+                    "位置：天气卡按定位自动换城市；电话：状态栏信号格数。首次启动时问过一次，" +
+                        "误点拒绝的话在这里补"
+            },
+            value = when {
+                missingPermissions.isEmpty() -> "已全部授予"
+                blocked -> "缺 ${Permissions.describe(missingPermissions)}（需手动开）"
+                else -> "缺 ${Permissions.describe(missingPermissions)}"
+            },
+            tone = if (missingPermissions.isEmpty()) {
+                SettingItem.Tone.SUCCESS
             } else {
-                "缺 ${Permissions.describe(missingPermissions)}"
+                SettingItem.Tone.WARNING
             },
         ) {
-            (context as? SettingsActivity)?.requestMissingPermissions()
+            val activity = context as? android.app.Activity ?: return@ActionItem
+            val missing = Permissions.missingRuntime(context)
+            when {
+                missing.isEmpty() -> {
+                    Toast.makeText(context, "已经全部授予了", Toast.LENGTH_SHORT).show()
+                    (context as? SettingsActivity)?.refreshItems()
+                }
+                // 一条都弹不出来了：只剩系统页手动开这条路
+                missing.all { Permissions.isBlocked(activity, it) } -> {
+                    if (!Permissions.openAppDetails(activity)) {
+                        Toast.makeText(
+                            context,
+                            "打不开应用信息页，请到 系统设置 → 应用 → 权限 里手动打开",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+                else -> (context as? SettingsActivity)?.requestMissingPermissions()
+            }
         }
         val overlayOk = Permissions.overlayGranted(context)
         items += SettingItem.ActionItem(
             "悬浮窗权限",
             "在地图卡上盖圆角遮罩用。不开也能用，只是地图卡四角会变成直角",
             value = if (overlayOk) "已开启" else "未开启",
+            tone = if (overlayOk) SettingItem.Tone.SUCCESS else SettingItem.Tone.WARNING,
         ) {
             val activity = context as? android.app.Activity ?: return@ActionItem
             if (overlayOk) {
@@ -352,6 +393,17 @@ object SettingsSpec {
             readMemory(context),
         )
         items += SettingItem.InfoItem("系统", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+
+        items += SettingItem.Section("排查")
+        items += SettingItem.ActionItem(
+            "诊断",
+            "地图进程、悬浮窗、音乐连接、权限状态，加上最近 200 行流程日志。" +
+                "车机上出问题时进来复制一份发出去，比口述准",
+        ) {
+            context.startActivity(
+                Intent(context, com.lf.launcher.diag.DiagnosticsActivity::class.java),
+            )
+        }
 
         return items
     }

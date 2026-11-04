@@ -86,6 +86,12 @@
             android:exported="false"
             android:screenOrientation="landscape" />
 
+        <activity
+            android:name=".diag.DiagnosticsActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|density"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
     </application>
 
 </manifest>

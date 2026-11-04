@@ -22,6 +22,7 @@ import com.lf.launcher.apps.AppListFragment
 import com.lf.launcher.databinding.ActivityLauncherBinding
 import com.lf.launcher.home.HomeFragment
 import com.lf.launcher.home.LauncherWindowState
+import com.lf.launcher.diag.FlowLog
 import com.lf.launcher.home.MapAppLauncher
 import com.lf.launcher.music.MusicController
 import com.lf.launcher.map.AppAlive
@@ -77,6 +78,14 @@ class LauncherActivity : ThemedActivity() {
     /** 桌面自己是否在前台：自动拉起地图前要再确认一次，防止抢走用户刚打开的页面 */
     private var resumed = false
 
+    /**
+     * 安全模式：只画 [CrashGuard] 那个极简页。
+     *
+     * 这个状态下 `binding` 是 **未初始化** 的（onCreate 提前 return 了），
+     * 所以所有碰 binding 的生命周期回调都必须先看这个标记，否则就是连环崩。
+     */
+    private var safeMode = false
+
     /** 2 秒倒计时是否已经排上（由 onPause 排，保证是"地图真的在前面"才开始算） */
     private var autoMapBackScheduled = false
 
@@ -115,6 +124,30 @@ class LauncherActivity : ThemedActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 连续崩过 3 次：只画极简页，卡片/地图/音乐一律不碰 —— 崩点很可能就在它们里面，
+        // 再跑一遍就是同一个结果。这里必须排在 SettingsStore.init 之前：
+        // 万一是配置读取崩的，也得进得来。
+        if (CrashGuard.isSafeMode(this)) {
+            safeMode = true
+            setContentView(
+                CrashGuard.buildSafeView(this) {
+                    // 先清标记再重建：onCreate 会重新判断 isSafeMode()，这次走正常流程。
+                    //
+                    // 这里**不能**顺手把 safeMode 置成 false —— 重建前还要走一遍 onPause，
+                    // 那一堆回调全靠 safeMode 跳过对 binding / statusTray 的访问，
+                    // 提前放开就会 `lateinit property statusTray has not been initialized`，
+                    // 于是"重启桌面"自己崩一次，又被兜底拉回安全模式，永远出不去。
+                    CrashGuard.exitSafeMode(this)
+                    recreate()
+                },
+            )
+            // 安全模式页也要占满整屏：状态栏压在上面很显眼，而且这时候没别的界面可看
+            SystemUi.apply(this)
+            FlowLog.w(FLOW, "进入安全模式：${CrashGuard.lastCrash(this)}")
+            return
+        }
+
         SettingsStore.init(this)
         binding = ActivityLauncherBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -141,12 +174,14 @@ class LauncherActivity : ThemedActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
+        if (safeMode) return
         outState.putInt(STATE_PAGE, binding.viewPager.currentItem)
     }
 
     override fun onResume() {
         super.onResume()
         resumed = true
+        if (safeMode) return
         // 从设置页等其它页面返回时系统栏标志会丢失，必须重新申请
         applySystemUi()
         // 设置页里可能改过「用系统栏 / 四边留白」，回来要重算一次
@@ -184,6 +219,7 @@ class LauncherActivity : ThemedActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        if (safeMode) return
         if (hasFocus) applySystemUi()
         // 高德悬浮窗永不抢焦点（TYPE_APPLICATION_OVERLAY + NOT_FOCUSABLE 由对方决定），
         // 所以这里不用为它让路：失焦就是真的切走了
@@ -231,6 +267,10 @@ class LauncherActivity : ThemedActivity() {
     override fun onPause() {
         super.onPause()
         resumed = false
+        if (safeMode) {
+            LauncherWindowState.setResumed(false)
+            return
+        }
         // 自动拉起地图的流程：桌面被切到后台 = 地图已经盖上来了，2 秒从这一刻开始算。
         // 用 inAutoMapFlow() 而不是只看 autoMapPending：高德启动中转页跳主界面会
         // 造成第二次 onPause，那一次 pending 已经清了，但流程还没收尾（见 autoMapSettleMs）
@@ -239,7 +279,7 @@ class LauncherActivity : ThemedActivity() {
         val musicJustLaunched = musicFlowAt > 0 && now - musicFlowAt < musicFlowWindowMs
         if (!musicJustLaunched && !autoMapBackScheduled && inAutoMapFlow()) {
             autoMapBackScheduled = true
-            Log.i(FLOW, "自动地图：桌面被盖住，${AUTO_MAP_BACK_MS}ms 后切回")
+            FlowLog.i(FLOW, "自动地图：桌面被盖住，${AUTO_MAP_BACK_MS}ms 后切回")
             handler.postDelayed(autoMapBack, AUTO_MAP_BACK_MS)
         }
         handler.removeCallbacks(clock)
@@ -269,6 +309,7 @@ class LauncherActivity : ThemedActivity() {
     /** 桌面里按返回不退出，只回首页 */
     @Deprecated("车机桌面不应退出")
     override fun onBackPressed() {
+        if (safeMode) return
         if (binding.viewPager.currentItem != 0) {
             binding.viewPager.setCurrentItem(0, true)
         }
@@ -452,7 +493,7 @@ class LauncherActivity : ThemedActivity() {
             // 刚拉过、还在收尾窗口里：直接跳过。高德冷启动要好几秒，
             // 这期间做存活判断只会得到一个假的"没跑"
             if (inAutoMapFlow()) {
-                Log.i(FLOW, "自动地图：本次开机已经拉过，跳过")
+                FlowLog.i(FLOW, "自动地图：本次开机已经拉过，跳过")
                 return
             }
             // 收尾窗口过了，问一句"它还在吗"。
@@ -470,7 +511,7 @@ class LauncherActivity : ThemedActivity() {
                 )
                 return
             }
-            Log.i(FLOW, "自动地图：高德已经不在运行，补拉一次")
+            FlowLog.i(FLOW, "自动地图：高德已经不在运行，补拉一次")
             autoMapDoneThisProcess = false
         }
         if (suppressAutoMap) {
@@ -480,24 +521,24 @@ class LauncherActivity : ThemedActivity() {
             // 再拉一次地图，看起来就是「刚回到桌面又被拽去高德」。
             suppressAutoMap = false
             lastAutoMapAt = SystemClock.elapsedRealtime()
-            Log.i(FLOW, "自动地图：这次回桌面是流程自己造成的，跳过并重置冷却")
+            FlowLog.i(FLOW, "自动地图：这次回桌面是流程自己造成的，跳过并重置冷却")
             return
         }
         val now = SystemClock.elapsedRealtime()
         // 从自己的二级页回来也重新计时：刚改完设置就弹地图会让人以为点错了
         if (skip) {
             lastAutoMapAt = now
-            Log.i(FLOW, "自动地图：skip（二级页/权限框），重置冷却")
+            FlowLog.i(FLOW, "自动地图：skip（二级页/权限框），重置冷却")
             return
         }
         if (now - lastAutoMapAt < AUTO_MAP_COOLDOWN_MS) {
-            Log.i(FLOW, "自动地图：冷却中（还差 ${AUTO_MAP_COOLDOWN_MS - (now - lastAutoMapAt)}ms）")
+            FlowLog.i(FLOW, "自动地图：冷却中（还差 ${AUTO_MAP_COOLDOWN_MS - (now - lastAutoMapAt)}ms）")
             return
         }
         lastAutoMapAt = now
         autoMapPending = true
         autoMapBackScheduled = false
-        Log.i(FLOW, "自动地图：${AUTO_MAP_OPEN_DELAY_MS}ms 后拉起")
+        FlowLog.i(FLOW, "自动地图：${AUTO_MAP_OPEN_DELAY_MS}ms 后拉起")
         // 先让桌面画完一帧再拉起：否则切过去时桌面上还是空的。
         // 先 remove 再 post：onResume 可能连着来好几次，队列里堆两个 Runnable 的话
         // 第二次执行时 autoMapPending 仍是 true，会把高德**再拉一次**。
@@ -510,17 +551,17 @@ class LauncherActivity : ThemedActivity() {
         // 这 400ms 里如果用户已经点了别的（比如进了设置页），就别抢前台了
         if (!resumed) {
             autoMapPending = false
-            Log.i(FLOW, "自动地图：已不在前台，放弃本次")
+            FlowLog.i(FLOW, "自动地图：已不在前台，放弃本次")
             return@Runnable
         }
         if (!MapAppLauncher.launchFullscreen(this)) {
             autoMapPending = false
-            Log.w(FLOW, "自动地图：launchFullscreen 返回 false，放弃本次")
+            FlowLog.w(FLOW, "自动地图：launchFullscreen 返回 false，放弃本次")
             return@Runnable
         }
         lastAutoMapLaunchAt = SystemClock.elapsedRealtime()
         autoMapDoneThisProcess = true
-        Log.i(FLOW, "自动地图：已拉起，等它盖上来")
+        FlowLog.i(FLOW, "自动地图：已拉起，等它盖上来")
         // 2 秒倒计时**不在这里起算**：高德冷启动要 1~2 秒，从这里算的话地图可能只露出半秒。
         // 真正的起点是 onPause（说明地图已经盖上来）。这里只放一个兜底的看门狗，
         // 防止"地图压根没起来但 pending 一直挂着"，那样下次退到后台会把桌面硬拉回来。
@@ -540,7 +581,7 @@ class LauncherActivity : ThemedActivity() {
         if (!inAutoMapFlow()) return@Runnable
         autoMapPending = false
         suppressAutoMap = true
-        Log.i(FLOW, "自动地图：切回桌面")
+        FlowLog.i(FLOW, "自动地图：切回桌面")
         // 自己是 singleTask：这个 Intent 不会新建实例，只是把桌面所在的任务提到前台
         runCatching {
             startActivity(
@@ -578,7 +619,7 @@ class LauncherActivity : ThemedActivity() {
         if (!MapAppLauncher.launchFullscreen(this)) return
         lastAutoMapLaunchAt = SystemClock.elapsedRealtime()
         autoMapDoneThisProcess = true
-        Log.i(FLOW, "点地图卡：已拉起，${AUTO_MAP_BACK_MS}ms 后回桌面")
+        FlowLog.i(FLOW, "点地图卡：已拉起，${AUTO_MAP_BACK_MS}ms 后回桌面")
     }
 
     // ---------------------------------------------------------- 开机自动播放音乐
@@ -698,7 +739,7 @@ class LauncherActivity : ThemedActivity() {
             if (mapBusy) {
                 if (++musicWaitCount > musicWaitMax) {
                     autoMusicTried = true
-                    Log.w(FLOW, "开机音乐：等地图让路 ${musicWaitMax} 轮仍不空，放弃")
+                    FlowLog.w(FLOW, "开机音乐：等地图让路 ${musicWaitMax} 轮仍不空，放弃")
                     return
                 }
                 Log.i(
@@ -712,17 +753,17 @@ class LauncherActivity : ThemedActivity() {
             }
             if (!resumed) {
                 musicWaitCount = 0
-                Log.i(FLOW, "开机音乐：桌面不在前台，等下次 onResume 重排")
+                FlowLog.i(FLOW, "开机音乐：桌面不在前台，等下次 onResume 重排")
                 return
             }
             autoMusicTried = true
             autoMusicDoneThisProcess = true
             musicWaitCount = 0
             if (!MusicController.autoStart()) {
-                Log.w(FLOW, "开机音乐：拉起失败（没有安装或没有启动入口）")
+                FlowLog.w(FLOW, "开机音乐：拉起失败（没有安装或没有启动入口）")
                 return
             }
-            Log.i(FLOW, "开机音乐：已拉起，${musicBackDelayMs}ms 后回桌面")
+            FlowLog.i(FLOW, "开机音乐：已拉起，${musicBackDelayMs}ms 后回桌面")
             musicFlowAt = SystemClock.elapsedRealtime()
             handler.postDelayed(musicBack, musicBackDelayMs)
         }
@@ -739,16 +780,16 @@ class LauncherActivity : ThemedActivity() {
      */
     private val musicBack = Runnable {
         if (resumed) {
-            Log.i(FLOW, "开机音乐：音乐还没盖上来，不用切回桌面")
+            FlowLog.i(FLOW, "开机音乐：音乐还没盖上来，不用切回桌面")
             return@Runnable
         }
         // 拉起音乐的那一刻已经确认过地图流程没在跑；这里再 busy，说明正好撞上
         // autoMapBack 的收尾窗口，让它把桌面带回来就行，别两边抢
         if (autoMapPending || autoMapBackScheduled) {
-            Log.i(FLOW, "开机音乐：回桌面时地图流程正在收尾，交给它，不抢")
+            FlowLog.i(FLOW, "开机音乐：回桌面时地图流程正在收尾，交给它，不抢")
             return@Runnable
         }
-        Log.i(FLOW, "开机音乐：切回桌面，并压掉这次的自动拉地图")
+        FlowLog.i(FLOW, "开机音乐：切回桌面，并压掉这次的自动拉地图")
         musicFlowAt = 0
         suppressAutoMap = true
         runCatching {
@@ -892,6 +933,10 @@ class LauncherActivity : ThemedActivity() {
         /** 设置页关闭时置位，桌面回到前台后切回首页 —— 否则改完设置看到的是应用页，像没生效 */
         @Volatile
         var returnToHome = false
+
+        /** 诊断页用：本次开机有没有拉过地图 / 音乐（只读） */
+        val autoMapDone: Boolean get() = autoMapDoneThisProcess
+        val autoMusicDone: Boolean get() = autoMusicDoneThisProcess
     }    private inner class PagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity) {
         override fun getItemCount(): Int = 2
 

@@ -113,6 +113,7 @@ object QWeatherDirect {
             low = low,
             at = System.currentTimeMillis(),
             district = districtName,
+            icon = n.optString("icon"),
         )
     }
 

@@ -8,11 +8,16 @@ import android.view.ViewGroup
 import android.widget.Switch
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import androidx.core.content.ContextCompat
 import com.lf.launcher.R
 
 class SettingsAdapter(
     items: List<SettingItem>,
     private val onChanged: () -> Unit,
+    /** 该分组是否处于折叠状态（标题上画 ▸ / ▾） */
+    private val isCollapsed: (String) -> Boolean = { false },
+    /** 点了分组标题：切换折叠 */
+    private val onToggleSection: (String) -> Unit = {},
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val items: MutableList<SettingItem> = items.toMutableList()
@@ -45,7 +50,11 @@ class SettingsAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val inflater = LayoutInflater.from(parent.context)
         return when (viewType) {
-            T_SECTION -> SectionHolder(inflater.inflate(R.layout.item_setting_section, parent, false))
+            T_SECTION -> SectionHolder(
+                inflater.inflate(R.layout.item_setting_section, parent, false),
+                isCollapsed,
+                onToggleSection,
+            )
             T_SWITCH -> SwitchHolder(inflater.inflate(R.layout.item_setting_switch, parent, false), onChanged)
             T_CHOICE -> ChoiceHolder(inflater.inflate(R.layout.item_setting_choice, parent, false), onChanged)
             T_ACTION -> ChoiceHolder(inflater.inflate(R.layout.item_setting_choice, parent, false), onChanged)
@@ -63,10 +72,18 @@ class SettingsAdapter(
         }
     }
 
-    class SectionHolder(view: View) : RecyclerView.ViewHolder(view) {
+    class SectionHolder(
+        view: View,
+        private val isCollapsed: (String) -> Boolean,
+        private val onToggleSection: (String) -> Unit,
+    ) : RecyclerView.ViewHolder(view) {
         private val title: TextView = view.findViewById(R.id.section_title)
         fun bind(item: SettingItem.Section) {
-            title.text = item.title
+            val collapsed = isCollapsed(item.title)
+            // 折叠状态直接画在标题上：▸ 收起 / ▾ 展开。整行都能点，比小箭头好按
+            title.text = if (collapsed) "\u25B6 ${item.title}" else "\u25BC ${item.title}"
+            itemView.alpha = if (collapsed) 0.75f else 1f
+            itemView.setOnClickListener { onToggleSection(item.title) }
         }
     }
 
@@ -146,8 +163,24 @@ class SettingsAdapter(
             desc.text = item.desc ?: ""
             desc.visibility = if (item.desc.isNullOrBlank()) View.GONE else View.VISIBLE
             value.text = item.value ?: "›"
+            // 缺什么用暖色点出来，齐了用绿色，普通项跟着主题色走
+            val ctx = itemView.context
+            value.setTextColor(
+                when (item.tone) {
+                    SettingItem.Tone.WARNING -> ContextCompat.getColor(ctx, R.color.warning)
+                    SettingItem.Tone.SUCCESS -> ContextCompat.getColor(ctx, R.color.success)
+                    SettingItem.Tone.NORMAL -> resolveTextColor(ctx)
+                },
+            )
             itemView.alpha = 1f
             itemView.setOnClickListener { item.action() }
+        }
+
+        /** 没设语义色时保持主题的次级文字色（和 ChoiceItem 一致） */
+        private fun resolveTextColor(ctx: Context): Int {
+            val tv = TypedValue()
+            ctx.theme.resolveAttribute(android.R.attr.textColorSecondary, tv, true)
+            return if (tv.resourceId != 0) ContextCompat.getColor(ctx, tv.resourceId) else tv.data
         }
     }
 

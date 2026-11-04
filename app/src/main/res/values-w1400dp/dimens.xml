@@ -15,6 +15,9 @@
 
     <dimen name="card_padding_horizontal">24dp</dimen>
     <dimen name="card_padding_vertical">18dp</dimen>
+    <dimen name="weather_glyph_size">76dp</dimen>
+    <!-- 图标整体从右边缘内缩这么多：贴边会显得孤立，缩进来右侧才留得住气 -->
+    <dimen name="weather_glyph_margin_end">56dp</dimen>
 
     <dimen name="status_bar_height">52dp</dimen>
     <dimen name="status_bar_text_size">24sp</dimen>
@@ -81,11 +84,15 @@
     <!-- 天气卡温度 -->
     <dimen name="weather_temp_text_size">44sp</dimen>
 
-    <!-- 设置页 -->
-    <dimen name="setting_section_text_size">13sp</dimen>
+    <!--
+      设置页：车机上离得远，字号整体上调过一轮。
+      分组标题原来是 13sp，比正文还小，现在它同时是折叠开关，必须能一眼扫到
+    -->
+    <dimen name="settings_header_text_size">26sp</dimen>
+    <dimen name="setting_section_text_size">19sp</dimen>
     <dimen name="setting_row_padding">20dp</dimen>
-    <dimen name="setting_title_text_size">18sp</dimen>
-    <dimen name="setting_desc_text_size">14sp</dimen>
+    <dimen name="setting_title_text_size">19sp</dimen>
+    <dimen name="setting_desc_text_size">15sp</dimen>
 
     <!--
       框架：底栏高度 / 底栏离底距离 / 页面给底栏让出的高度 / 卡片列离底距离

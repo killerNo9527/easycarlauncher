@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  分组标题：现在同时是「折叠开关」，所以它得比正文字重一档、字号也不能小 ——
+  车机上远距离扫视时，这行是唯一的导航。
+-->
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/section_title"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="4dp"
-    android:paddingTop="22dp"
-    android:paddingEnd="4dp"
-    android:paddingBottom="8dp"
+    android:fontFamily="sans-serif-medium"
+    android:letterSpacing="0.04"
+    android:paddingStart="6dp"
+    android:paddingTop="24dp"
+    android:paddingEnd="6dp"
+    android:paddingBottom="10dp"
     android:textColor="@color/accent"
     android:textSize="@dimen/setting_section_text_size" />

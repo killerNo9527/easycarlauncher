@@ -18,6 +18,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import com.lf.launcher.diag.FlowLog
 import com.lf.launcher.lyric.LyricInfoParser
 import com.lf.launcher.lyric.LyricLine
 import com.lf.launcher.lyric.LyricTimeline
@@ -257,7 +258,7 @@ object MusicController {
      */
     private fun ensureConnected() {
         if (controller != null) {
-            if (connectRetry != 0) Log.i(TAG, "已连上 md3Music，停止重连")
+            if (connectRetry != 0) FlowLog.i(TAG, "已连上 md3Music，停止重连")
             connectRetry = 0
             nextConnectAt = 0L
             return
@@ -267,7 +268,7 @@ object MusicController {
             // future 悬着不返回：多半对方进程在冷启动。超过阈值就丢掉重来，
             // 否则 connecting 一直是 true，谁也进不来
             if (now - connectStartedAt < CONNECT_STUCK_MS) return
-            Log.w(TAG, "连接 ${now - connectStartedAt}ms 没有结果，放弃重来")
+            FlowLog.w(TAG, "连接 ${now - connectStartedAt}ms 没有结果，放弃重来")
             runCatching { pending?.cancel(true) }
             pending = null
             connecting = false
@@ -284,7 +285,7 @@ object MusicController {
         val delay = connectRetryDelays[idx]
         connectRetry++
         nextConnectAt = SystemClock.elapsedRealtime() + delay
-        Log.i(TAG, "md3Music 还没就绪（会话未创建），${delay}ms 后重试（第 $connectRetry 次）")
+        FlowLog.i(TAG, "md3Music 还没就绪（会话未创建），${delay}ms 后重试（第 $connectRetry 次）")
     }
 
     /**
@@ -391,7 +392,7 @@ object MusicController {
 
         emptyMetaRetries = 0
         readPlayer(c)
-        Log.i(TAG, "已连接 md3Music（Media3），title=$title artist=$artist")
+        FlowLog.i(TAG, "已连接 md3Music（Media3），title=$title artist=$artist")
         publish()
     }
 
@@ -455,7 +456,7 @@ object MusicController {
 
         nextLyricRetryAt = now + lyricRetryDelays[lyricRetry]
         lyricRetry++
-        Log.i(TAG, "歌词为空（title=$title），第 $lyricRetry 次重连补拉")
+        FlowLog.i(TAG, "歌词为空（title=$title），第 $lyricRetry 次重连补拉")
         scheduleResync(0L, force = true)
     }
 
@@ -590,6 +591,9 @@ object MusicController {
 
         val d = metadata.durationMs
         if (d != null && d > 0) durationMs = d
+
+        // 记下这一首：连不上播放器时音乐卡显示它，而不是一张"暂无播放"的空卡
+        context?.let { LastPlayed.remember(it, title, artist, albumArt) }
 
         // 关键：Media3 的 MediaMetadata 才有 extras
         val extras = metadata.extras
@@ -772,7 +776,7 @@ object MusicController {
             .onFailure { Log.w(TAG, "开机自启拉起 md3Music 失败：$it") }
             .isSuccess
         if (ok) {
-            Log.i(TAG, "开机自启：已拉起 md3Music，等它建会话")
+            FlowLog.i(TAG, "开机自启：已拉起 md3Music，等它建会话")
             retryNow()
         }
         return ok

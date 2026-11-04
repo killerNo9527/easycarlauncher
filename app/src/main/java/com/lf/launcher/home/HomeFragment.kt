@@ -30,6 +30,7 @@ import com.lf.launcher.map.MapMaskOverlay
 import com.lf.launcher.lyric.LyricTimeline
 import com.lf.launcher.ui.CircleArtView
 import com.lf.launcher.ui.ScrollTextView
+import com.lf.launcher.music.LastPlayed
 import com.lf.launcher.music.MusicController
 import com.lf.launcher.settings.CardOrder
 import com.lf.launcher.settings.Defaults
@@ -40,7 +41,9 @@ import com.lf.launcher.settings.WeatherJwtDialog
 import com.lf.launcher.settings.WeatherKeyDialog
 import com.lf.launcher.weather.WeatherApi
 import com.lf.launcher.weather.WeatherLocator
+import com.lf.launcher.weather.WeatherGlyphView
 import com.lf.launcher.weather.WeatherNow
+import com.lf.launcher.weather.glyphFor
 import com.lf.launcher.weather.WeatherStore
 import java.io.File
 import java.text.SimpleDateFormat
@@ -107,6 +110,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     private var weatherText: TextView? = null
     private var weatherRange: TextView? = null
     private var weatherAt: TextView? = null
+    private var weatherGlyph: com.lf.launcher.weather.WeatherGlyphView? = null
 
     /** 有请求在飞时不再发第二个，避免网络慢的时候叠请求把额度刷掉 */
     private var weatherLoading = false
@@ -139,7 +143,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     private var lyricCurrent: ScrollTextView? = null
     /** 当前行下方的括号翻译；没有翻译时 GONE（不占高度） */
     private var lyricTranslation: TextView? = null
-    private var lastArt: Any? = null
+    private var lastArtShown: Any? = null
     private var lastArtBottom: Any? = null
     private var lastLineIdx = Int.MIN_VALUE
 
@@ -199,6 +203,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         weatherText = view.findViewById(R.id.weather_text)
         weatherRange = view.findViewById(R.id.weather_range)
         weatherAt = view.findViewById(R.id.weather_at)
+        weatherGlyph = view.findViewById(R.id.weather_glyph)
         view.findViewById<View>(R.id.weather_card)?.setOnClickListener { onWeatherClick() }
 
         musicTitle = view.findViewById(R.id.music_title)
@@ -359,6 +364,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             w.at > 0 -> timeFmt.format(Date(w.at))
             else -> ""
         }
+        // 图标按编码画；拿不到编码时退化成按中文描述猜（老缓存也有图）
+        weatherGlyph?.kind = glyphFor(w.icon, w.text)
     }
 
     private fun renderWeatherLoggedOut() {
@@ -368,6 +375,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         weatherText?.text = if (jwt) "点此配 JWT" else "点此填 Key"
         weatherRange?.text = if (jwt) "天气需要先导入 JWT 凭据" else "天气需要先填和风 Key"
         weatherAt?.text = ""
+        weatherGlyph?.kind = WeatherGlyphView.Kind.NONE
     }
 
     private fun renderWeatherError(msg: String) {
@@ -375,6 +383,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         weatherText?.text = "点此重试"
         weatherRange?.text = msg.take(40)
         weatherAt?.text = ""
+        // 失败时不画图标：留个太阳在那儿会让人以为数据是好的
+        weatherGlyph?.kind = WeatherGlyphView.Kind.NONE
     }
 
     // ------------------------------------------------------------------ 广播控制高德地图
@@ -796,8 +806,16 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         val snap = MusicController.snapshot()
         val pos = MusicController.positionMs()
 
-        val title = snap.title.ifBlank { "暂无播放" }
-        val artistRaw = snap.artist
+        // 没有活动元数据 = 播放器没连上（开机那几秒最常见）。
+        // 这时退回上次播放的那首：一张写着歌名的卡比"暂无播放"有用得多，
+        // 点播放键会拉起音乐 App 续播（见 MusicController.playPause 的 controller == null 分支）
+        val idle = snap.title.isBlank()
+        val lastTitle = if (idle && LastPlayed.has()) LastPlayed.title() else ""
+        val lastArtist = if (lastTitle.isNotEmpty()) LastPlayed.artist() else ""
+        val cachedArt = if (lastTitle.isNotEmpty()) LastPlayed.art() else null
+
+        val title = snap.title.ifBlank { lastTitle.ifBlank { "暂无播放" } }
+        val artistRaw = snap.artist.ifBlank { lastArtist }
         val playing = snap.isPlaying
         val duration = snap.durationMs
         val connected = snap.connected
@@ -808,9 +826,10 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
             musicArtist?.text = artistRaw.ifBlank { "点击打开音乐" }
         }
 
-        if (snap.albumArt !== lastArt) {
-            lastArt = snap.albumArt
-            albumCover?.setArt(snap.albumArt)
+        val art = snap.albumArt ?: cachedArt
+        if (art !== lastArtShown) {
+            lastArtShown = art
+            albumCover?.setArt(art)
         }
 
         btnPlay?.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
@@ -823,9 +842,9 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         val artistText = artistRaw.ifBlank { if (connected) "未在播放" else "未连接播放器" }
         if (bottomTitle?.text?.toString() != title) bottomTitle?.text = title
         if (bottomArtist?.text?.toString() != artistText) bottomArtist?.text = artistText
-        if (snap.albumArt !== lastArtBottom) {
-            lastArtBottom = snap.albumArt
-            bottomArt?.setArt(snap.albumArt)
+        if (art !== lastArtBottom) {
+            lastArtBottom = art
+            bottomArt?.setArt(art)
         }
 
         if (duration > 0) {
@@ -836,14 +855,22 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         musicCurrentTime?.text = formatTime(pos)
         musicTotalTime?.text = if (duration > 0) formatTime(duration) else "--:--"
 
-        renderLyric(timeline, connected, pos, snap.lyricPending)
+        // 空态且记着上一首：歌词位写一句"点播放继续"，比"未连接播放器"有指向性
+        val idleHint = if (idle && lastTitle.isNotEmpty()) "点播放继续" else null
+        renderLyric(timeline, connected, pos, snap.lyricPending, idleHint)
     }
 
     /**
      * 5 行等分，当前行固定落在正中间（index = size/2 = 2）：
      * 前两句 / 当前 / 后两句。这样切句时视线不用上下追。
      */
-    private fun renderLyric(tl: LyricTimeline?, connected: Boolean, pos: Long, pending: Boolean) {
+    private fun renderLyric(
+        tl: LyricTimeline?,
+        connected: Boolean,
+        pos: Long,
+        pending: Boolean,
+        idleHint: String? = null,
+    ) {
         val lines = lyricLines ?: return
         val current = lines.size / 2
 
@@ -874,7 +901,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
                 lines.forEachIndexed { i, tv ->
                     styleLine(tv, false)
                     tv.text = when (i) {
-                        current -> if (connected) "暂无歌词" else "未连接播放器"
+                        current -> idleHint ?: if (connected) "暂无歌词" else "未连接播放器"
                         else -> ""
                     }
                 }

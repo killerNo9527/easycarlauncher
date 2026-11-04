@@ -2,8 +2,9 @@
 <!--
   天气卡：城市 / 大号温度 / 天气文字 / 今日最高最低 / 更新时间。
 
-  为什么不用天气图标：这套卡片里没有一个图标资产，突然塞一组彩色小图会打断整列的黑白灰。
-  温度用字号说话，天气用两个字说话，够了 —— 瞄一眼就知道外面几度。
+  为什么图标是画出来的线条而非彩色小图：这套卡片里没有一个图标资产，塞一组彩色图会打断
+  整列的黑白灰。右侧那个 [com.lf.launcher.weather.WeatherGlyphView] 用单色描边画日/月/云/雨，
+  颜色跟着 text_secondary 走，日夜切换不用另备一套图。
 
   三种状态共用一套控件，靠文案切换（见 HomeFragment.renderWeather）：
     未登录 → 温度「——」、副文案「点此登录」
@@ -23,6 +24,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_marginEnd="@dimen/weather_glyph_size"
         android:orientation="vertical">
 
         <LinearLayout
@@ -99,6 +101,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
+                android:layout_marginEnd="@dimen/weather_glyph_margin_end"
                 android:layout_weight="1"
                 android:ellipsize="end"
                 android:gravity="start"
@@ -112,11 +115,25 @@
             android:id="@+id/weather_range"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/weather_glyph_margin_end"
             android:ellipsize="end"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:textColor="@color/text_tertiary"
             android:textSize="@dimen/card_body_text_size" />
     </LinearLayout>
+
+    <!--
+      右侧气象图标。垂直跟着卡片居中，水平不贴右边缘，而是从右边内缩一档
+      （weather_glyph_margin_end）——
+      贴着卡片右边会显得孤零零地挂在角上，缩进来和文字列之间、和卡片右边之间
+      都有余量，读起来才像"这张卡的插图"而不是"贴纸"。
+    -->
+    <com.lf.launcher.weather.WeatherGlyphView
+        android:id="@+id/weather_glyph"
+        android:layout_width="@dimen/weather_glyph_size"
+        android:layout_height="@dimen/weather_glyph_size"
+        android:layout_gravity="end|center_vertical"
+        android:layout_marginEnd="@dimen/weather_glyph_margin_end" />
 
 </FrameLayout>

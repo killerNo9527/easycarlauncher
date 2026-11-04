@@ -36,6 +36,16 @@ sealed class SettingItem {
         val desc: String? = null,
         /** 右侧显示的当前值，null 时显示 › */
         val value: String? = null,
+        /**
+         * 右侧值的语义色。
+         *
+         * 车机上扫一眼就知道哪一项要处理 —— 权限被收走、地图没选、音乐没连，
+         * 这些"缺了会静默失效"的项一律用 [Tone.WARNING]，不用点进去才发现。
+         */
+        val tone: Tone = Tone.NORMAL,
         val action: () -> Unit,
     ) : SettingItem()
+
+    /** 设置项右侧值的语义色 */
+    enum class Tone { NORMAL, WARNING, SUCCESS }
 }

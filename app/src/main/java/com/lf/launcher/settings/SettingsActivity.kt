@@ -9,6 +9,7 @@ import com.lf.launcher.ui.Appearance
 import com.lf.launcher.ui.Permissions
 import com.lf.launcher.ui.SystemUi
 import com.lf.launcher.ui.ThemedActivity
+import androidx.core.widget.doAfterTextChanged
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.lf.launcher.LauncherActivity
 import com.lf.launcher.databinding.ActivitySettingsBinding
@@ -36,12 +37,118 @@ class SettingsActivity : ThemedActivity() {
         SystemUi.apply(this)
         SystemUi.attachContentInset(binding.root, withCustomPadding = false)
 
-        adapter = SettingsAdapter(SettingsSpec.build(this)) { onSettingChanged() }
+        initCollapsed()
+        binding.settingsSearch.doAfterTextChanged { editable ->
+            val next = editable?.toString().orEmpty()
+            if (next == query) return@doAfterTextChanged
+            query = next
+            rebuild()
+        }
+
+        adapter = SettingsAdapter(
+            visible(SettingsSpec.build(this)),
+            { onSettingChanged() },
+            { title -> title in collapsed },
+            { title -> toggleSection(title) },
+        )
         binding.settingsList.layoutManager = LinearLayoutManager(this)
         binding.settingsList.adapter = adapter
         binding.settingsList.itemAnimator = null
 
         binding.btnBack.setOnClickListener { finish() }
+    }
+
+    // ------------------------------------------------------------ 搜索与折叠
+
+    /**
+     * 50 个设置项排在一条长列表里，车机上要滚七八屏，"等高德的时间"这种项全靠记位置。
+     * 搜索解决"知道叫什么"，折叠解决"不知道叫什么只能翻"。
+     */
+    private var query = ""
+
+    private val collapsed = mutableSetOf<String>()
+
+    /**
+     * 第一次进来只展开第一个分组，其余收成标题 —— 整页一眼看完，点哪组开哪组。
+     * 之后按用户自己的折叠状态来（存在 [Keys.SETTINGS_COLLAPSED]）。
+     */
+    private fun initCollapsed() {
+        val raw = SettingsStore.getString(Keys.SETTINGS_COLLAPSED, UNSET)
+        if (raw == UNSET) {
+            val titles = SettingsSpec.build(this)
+                .filterIsInstance<SettingItem.Section>()
+                .map { it.title }
+            collapsed += titles.drop(1)
+            persistCollapsed()
+            return
+        }
+        collapsed += raw.split(',').filter { it.isNotBlank() }
+    }
+
+    private fun persistCollapsed() {
+        SettingsStore.setString(Keys.SETTINGS_COLLAPSED, collapsed.joinToString(","))
+    }
+
+    private fun toggleSection(title: String) {
+        if (!collapsed.add(title)) collapsed.remove(title)
+        persistCollapsed()
+        rebuild()
+    }
+
+    /**
+     * 过滤后真正交给列表的条目。
+     *
+     * 搜索时**忽略折叠**：命中的项必须都能看见，否则会出现"搜到了但列表是空的"。
+     * 搜索还会补上所属分组标题，让人知道这一项在哪个组里。
+     */
+    private fun visible(all: List<SettingItem>): List<SettingItem> {
+        val q = query.trim()
+        if (q.isNotEmpty()) {
+            val out = mutableListOf<SettingItem>()
+            var section: SettingItem.Section? = null
+            var sectionAdded = false
+            for (item in all) {
+                if (item is SettingItem.Section) {
+                    section = item
+                    sectionAdded = false
+                    continue
+                }
+                if (!matches(item, q)) continue
+                if (!sectionAdded) {
+                    section?.let { out += it }
+                    sectionAdded = true
+                }
+                out += item
+            }
+            return out
+        }
+
+        val out = mutableListOf<SettingItem>()
+        var skip = false
+        for (item in all) {
+            if (item is SettingItem.Section) {
+                out += item
+                skip = item.title in collapsed
+                continue
+            }
+            if (!skip) out += item
+        }
+        return out
+    }
+
+    private fun matches(item: SettingItem, q: String): Boolean {
+        val text = when (item) {
+            is SettingItem.SwitchItem -> "${item.title} ${item.desc.orEmpty()}"
+            is SettingItem.ChoiceItem -> "${item.title} ${item.desc.orEmpty()}"
+            is SettingItem.InfoItem -> "${item.title} ${item.value}"
+            is SettingItem.ActionItem -> "${item.title} ${item.desc.orEmpty()} ${item.value.orEmpty()}"
+            is SettingItem.Section -> item.title
+        }
+        return text.contains(q, ignoreCase = true)
+    }
+
+    private fun rebuild() {
+        adapter.submit(visible(SettingsSpec.build(this)))
     }
 
     /**
@@ -60,12 +167,12 @@ class SettingsActivity : ThemedActivity() {
         // 开关本身可能改的是「用不用系统栏」—— 要立刻生效，不能等退出再回来
         SystemUi.apply(this)
         SystemUi.refresh(binding.root)
-        adapter.submit(SettingsSpec.build(this))
+        rebuild()
     }
 
     /** 子对话框里改了值（比如四边留白）后，刷新右侧显示值 */
     fun refreshItems() {
-        adapter.submit(SettingsSpec.build(this))
+        rebuild()
     }
 
     // ------------------------------------------------------------ 定位权限
@@ -149,6 +256,9 @@ class SettingsActivity : ThemedActivity() {
     }
 
     private companion object {
+        /** 折叠状态从未写过时的哨兵值：空串本身是合法状态（全部展开） */
+        const val UNSET = "\u0000"
+
         const val REQ_LOCATION = 7101
 
         /** 与 LauncherActivity.REQ_ALL 不同值：两个页面各自处理自己的回调 */
@@ -166,7 +276,8 @@ class SettingsActivity : ThemedActivity() {
         super.onResume()
         SystemUi.apply(this)
         SystemUi.refresh(binding.root)
-        adapter.submit(SettingsSpec.build(this))
+        // 从系统设置页回来：权限状态可能变了，整张列表重建一次（权限行带语义色）
+        rebuild()
     }
 
 }

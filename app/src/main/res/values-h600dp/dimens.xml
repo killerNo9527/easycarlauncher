@@ -93,11 +93,12 @@
     <!-- 天气卡温度 -->
     <dimen name="weather_temp_text_size">33sp</dimen>
 
-    <!-- 设置页 -->
-    <dimen name="setting_section_text_size">12sp</dimen>
-    <dimen name="setting_row_padding">14dp</dimen>
-    <dimen name="setting_title_text_size">15sp</dimen>
-    <dimen name="setting_desc_text_size">12sp</dimen>
+    <!-- 设置页（同上：字号上调过一轮） -->
+    <dimen name="settings_header_text_size">24sp</dimen>
+    <dimen name="setting_section_text_size">18sp</dimen>
+    <dimen name="setting_row_padding">16dp</dimen>
+    <dimen name="setting_title_text_size">17sp</dimen>
+    <dimen name="setting_desc_text_size">14sp</dimen>
 
     <!--
       框架：底栏高度 / 底栏离底距离 / 页面给底栏让出的高度 / 卡片列离底距离
@@ -114,4 +115,7 @@
     <dimen name="bottom_btn_gap">20dp</dimen>
     <dimen name="bottom_btn_side_inset">5dp</dimen>
     <dimen name="bottom_btn_play_inset">12dp</dimen>
+    <dimen name="weather_glyph_size">56dp</dimen>
+    <!-- 图标整体从右边缘内缩这么多：贴边会显得孤立，缩进来右侧才留得住气 -->
+    <dimen name="weather_glyph_margin_end">40dp</dimen>
 </resources>

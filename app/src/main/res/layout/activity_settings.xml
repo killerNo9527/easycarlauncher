@@ -34,9 +34,10 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
                 android:text="设置"
                 android:textColor="@color/text_primary"
-                android:textSize="@dimen/music_title_text_size" />
+                android:textSize="@dimen/settings_header_text_size" />
 
             <Space
                 android:layout_width="0dp"
@@ -56,6 +57,34 @@
                 android:textSize="@dimen/setting_desc_text_size" />
         </LinearLayout>
 
+        <!--
+          搜索框：50 个设置项在车机上要滚七八屏，找"等高德的时间"这种全靠记位置。
+          车机键盘可不一定有，所以搜索只是辅助手段，分组折叠才是主要靠山。
+        -->
+        <EditText
+            android:id="@+id/settings_search"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/app_list_padding_horizontal"
+            android:layout_marginEnd="@dimen/app_list_padding_horizontal"
+            android:layout_marginBottom="6dp"
+            android:background="@drawable/bg_nav_item"
+            android:hint="搜索设置项"
+            android:imeOptions="actionSearch"
+            android:importantForAutofill="no"
+            android:inputType="text"
+            android:maxLines="1"
+            android:minHeight="44dp"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_tertiary"
+            android:textSize="@dimen/setting_desc_text_size"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/settings_header"
+            app:layout_constraintWidth_max="920dp" />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/settings_list"
             android:layout_width="0dp"
@@ -68,7 +97,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/settings_header"
+            app:layout_constraintTop_toBottomOf="@id/settings_search"
             app:layout_constraintWidth_max="920dp" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>

@@ -31,6 +31,10 @@
     <!-- 卡片内边距 -->
     <dimen name="card_padding_horizontal">12dp</dimen>
     <dimen name="card_padding_vertical">8dp</dimen>
+    <!-- 天气卡右侧气象图标：随卡片一起缩放 -->
+    <dimen name="weather_glyph_size">52dp</dimen>
+    <!-- 图标整体从右边缘内缩这么多：贴边会显得孤立，缩进来右侧才留得住气 -->
+    <dimen name="weather_glyph_margin_end">38dp</dimen>
 
     <!-- 顶部状态栏：时间 / 日期各自一档字号，日期单独给是因为以前借的是 card_body_text_size，
          卡片字号一动状态栏就跟着变 -->
@@ -101,10 +105,11 @@
     <dimen name="weather_temp_text_size">26sp</dimen>
 
     <!-- 设置页：能滚动，按标准档走，不缩 -->
-    <dimen name="setting_section_text_size">12sp</dimen>
-    <dimen name="setting_row_padding">14dp</dimen>
-    <dimen name="setting_title_text_size">15sp</dimen>
-    <dimen name="setting_desc_text_size">12sp</dimen>
+    <dimen name="settings_header_text_size">24sp</dimen>
+    <dimen name="setting_section_text_size">19sp</dimen>
+    <dimen name="setting_row_padding">16dp</dimen>
+    <dimen name="setting_title_text_size">17sp</dimen>
+    <dimen name="setting_desc_text_size">14sp</dimen>
 
     <!--
       框架：短屏把底栏和四周留白一起收，给卡片腾高度

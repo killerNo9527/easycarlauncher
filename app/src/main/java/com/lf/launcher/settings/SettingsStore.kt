@@ -55,6 +55,9 @@ object Keys {
     const val STATUS_SHORTCUTS = "status_shortcuts"          // 总开关
     const val STATUS_SHORTCUT_APPS = "status_shortcut_apps"  // 包名，逗号分隔，顺序即显示顺序
 
+    /** 设置页自身界面状态（不是功能开关）：被折叠的分组标题，逗号分隔 */
+    const val SETTINGS_COLLAPSED = "settings_collapsed"
+
     // 系统栏 / 安全区
     const val USE_SYSTEM_BARS = "use_system_bars"   // 用系统自带状态栏与导航栏（不沉浸）
     const val PAD_TOP = "pad_top"                   // 全局四边留白（dp），在系统栏占位之外再加

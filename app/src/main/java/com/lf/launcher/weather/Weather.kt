@@ -30,6 +30,12 @@ data class WeatherNow(
      * 区名小一号跟在后面 —— 既没丢掉「我在枣庄」这个大前提，又能分清具体在哪个区。
      */
     val district: String = "",
+    /**
+     * 和风的图标编码（v7 的 `icon`，如 100 晴 / 150 晴夜 / 305 小雨）。
+     *
+     * 卡片上那个线条图标就是按它画的。拿不到时为空，UI 会退化成按 [text] 猜。
+     */
+    val icon: String = "",
 ) {
     /** 「枣庄 市中」这种拼成一行给 Toast / 日志用；卡片上是分开两个控件显示的 */
     val displayName: String get() = if (district.isBlank()) city else "$city $district"
@@ -114,13 +120,14 @@ object WeatherStore {
             low = if (o.has("low")) o.optInt("low") else null,
             at = o.optLong("at"),
             district = o.optString("district"),
+            icon = o.optString("icon"),
         )
     }.getOrNull()
 
     fun saveCache(w: WeatherNow) {
         val o = JSONObject()
             .put("city", w.city).put("temp", w.temp).put("text", w.text)
-            .put("at", w.at).put("district", w.district)
+            .put("at", w.at).put("district", w.district).put("icon", w.icon)
         w.high?.let { o.put("high", it) }
         w.low?.let { o.put("low", it) }
         SettingsStore.setString(Keys.WEATHER_CACHE, o.toString())
