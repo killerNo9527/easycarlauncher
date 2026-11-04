@@ -91,6 +91,7 @@ object Keys {
     const val MUSIC_COVER = "music_cover"
     const val MUSIC_LYRIC = "music_lyric"
     const val MUSIC_AUTOSTART = "music_autostart"         // 开机后由桌面拉起 md3Music 续播
+    const val MUSIC_MAP_QUIET = "music_map_quiet"         // 拉高德之后空多久才允许拉音乐（毫秒）
 
     // 地图：只剩广播控制一条路
     const val MAP_MODE = "map_mode"                       // 已废弃，仅用于清理旧值
@@ -140,6 +141,15 @@ object Defaults {
      * 主动拉一次、随即切回自己，音乐就在后台接着播，歌词也就有了。
      */
     const val MUSIC_AUTOSTART = true
+
+    /**
+     * 拉过高德之后，留多久的清净才允许拉音乐（毫秒，字符串存）。
+     *
+     * 这个值就是「等高德加载完」的可调替代：高德没有公开的"加载完成"信号，
+     * 只能在它被拉起后按时间让路。车机快就调小，模拟器慢就调大。
+     * 0 = 不额外等待（只剩流程状态判断，高德可能被音乐盖在半张图上）。
+     */
+    const val MUSIC_MAP_QUIET = "1500"
 
     /** 首次启动的权限引导默认都没做过（false = 还没问过） */
     const val PERMISSION_ASKED = false

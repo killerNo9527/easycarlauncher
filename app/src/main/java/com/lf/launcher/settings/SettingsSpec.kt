@@ -113,6 +113,20 @@ object SettingsSpec {
             "md3Music 不支持开机自启，由桌面在开机后拉起它一次续播上次队列，随即退回桌面",
             default = true,
         )
+        items += SettingItem.ChoiceItem(
+            Keys.MUSIC_MAP_QUIET, "等高德的时间",
+            "刚拉过高德时先让它加载，过这么久才去拉音乐。" +
+                "高德没有公开的加载完成信号，只能按时间让路：" +
+                "车机快就调小，模拟器慢就调大；调 0 等于不等（高德可能停在半张图上）",
+            options = listOf(
+                "1500" to "1.5 秒（推荐）",
+                "3000" to "3 秒",
+                "5000" to "5 秒",
+                "8000" to "8 秒（最保守）",
+                "0" to "不等待",
+            ),
+            default = Defaults.MUSIC_MAP_QUIET, ready = true,
+        )
 
         items += SettingItem.Section("音效")
         items += SettingItem.SwitchItem(

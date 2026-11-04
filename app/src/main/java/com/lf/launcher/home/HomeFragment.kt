@@ -23,6 +23,7 @@ import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.fragment.app.Fragment
 import com.lf.launcher.R
+import com.lf.launcher.LauncherActivity
 import com.lf.launcher.map.AmapNavGuard
 import com.lf.launcher.map.AmapPlusController
 import com.lf.launcher.map.MapMaskOverlay
@@ -462,7 +463,8 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     private fun onMapCardClick() {
         when (mapState) {
             MapCardState.NO_APP -> openMapPicker()
-            // 悬浮窗盖在卡片上时点不到这里；能点到说明它没出来，兜底进导航
+            // 悬浮窗盖在卡片上时点不到这里；能点到说明它没出来，兜底进导航。
+            // 拉起后由桌面自动切回来——点它的目的是让悬浮窗挂上，不是停在它的全屏界面
             MapCardState.AMAP_PLUS_READY -> launchMapFullscreen()
             // 不认这套广播：直接带去设置，别让用户在空卡片上反复点
             MapCardState.AMAP_PLUS_UNSUPPORTED -> openMapSettings()
@@ -470,6 +472,14 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     }
 
     private fun launchMapFullscreen() {
+        // 交给 Activity 走统一流程：拉起 → 收尾窗口 → 自动回桌面。
+        // 这样点卡片和开机自动拉起用的是同一套状态机，不会互相踩
+        val act = activity as? LauncherActivity
+        if (act != null) {
+            act.launchMapAndComeBack()
+            return
+        }
+        // 理论上到不了（桌面的 Fragment 一定挂在这个 Activity 上），保留原来的兜底
         val ctx = requireContext()
         val pkg = SettingsStore.getString(Keys.MAP_APP, "")
         if (pkg.isEmpty()) {
