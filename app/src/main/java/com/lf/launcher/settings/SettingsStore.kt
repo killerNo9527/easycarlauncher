@@ -90,6 +90,7 @@ object Keys {
     // 音乐
     const val MUSIC_COVER = "music_cover"
     const val MUSIC_LYRIC = "music_lyric"
+    const val MUSIC_AUTOSTART = "music_autostart"         // 开机后由桌面拉起 md3Music 续播
 
     // 地图：只剩广播控制一条路
     const val MAP_MODE = "map_mode"                       // 已废弃，仅用于清理旧值
@@ -125,6 +126,20 @@ object Defaults {
 
     /** 开始导航时自动校正悬浮窗视口 */
     const val AMAP_NAV_NUDGE = true
+
+    /**
+     * 开机后自动拉起 md3Music 续播。
+     *
+     * 为什么必须由桌面来做：md3Music 的 AndroidManifest 里没有 BOOT_COMPLETED
+     * 接收者，dex 里也没有任何「开机自启 / 自动播放」设置项 —— 它自己做不到。
+     * 系统自启管理最多把它的**进程**拉起来，没有界面就不会建播队列，
+     * 开机后桌面只能显示「暂无播放」。
+     *
+     * 但只要它的启动界面被拉起一次，它就会恢复上次队列并自己开始播放
+     * （实测 force-stop 后 am start，12 秒内 state=3）。所以桌面在开机窗口内
+     * 主动拉一次、随即切回自己，音乐就在后台接着播，歌词也就有了。
+     */
+    const val MUSIC_AUTOSTART = true
 
     /** 首次启动的权限引导默认都没做过（false = 还没问过） */
     const val PERMISSION_ASKED = false

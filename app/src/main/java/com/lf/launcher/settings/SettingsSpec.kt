@@ -108,6 +108,11 @@ object SettingsSpec {
         items += SettingItem.Section("音乐")
         items += SettingItem.SwitchItem(Keys.MUSIC_COVER, "显示封面", "无封面时用渐变占位", default = true)
         items += SettingItem.SwitchItem(Keys.MUSIC_LYRIC, "显示歌词", "读取播放器发布的歌词", default = true)
+        items += SettingItem.SwitchItem(
+            Keys.MUSIC_AUTOSTART, "开机自动播放",
+            "md3Music 不支持开机自启，由桌面在开机后拉起它一次续播上次队列，随即退回桌面",
+            default = true,
+        )
 
         items += SettingItem.Section("音效")
         items += SettingItem.SwitchItem(

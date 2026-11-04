@@ -2,6 +2,7 @@ package com.lf.launcher.music
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Handler
@@ -74,6 +75,46 @@ object MusicController {
     /** 重连后元数据仍为空时的重试间隔与次数 */
     private const val RESYNC_RETRY_MS = 700L
     private const val MAX_EMPTY_META_RETRIES = 4
+
+    /** 心跳周期：换歌推断、歌词补拉、断线重连都挂在它上面 */
+    private const val TICK_MS = 800L
+
+    /**
+     * 连不上时的重试节奏（毫秒）。
+     *
+     * 为什么要它：桌面是 HOME，开机就起，而 md3Music 往往还没被用户点开——
+     * 那一刻 `buildAsync` 必然失败（实测异常是
+     * `SecurityException: Session rejected the connection request`，不是"服务不存在"）。
+     *
+     * 反编译 md3Music 6.2.0 的 `MD3MusicMediaSessionService` 能看到原因：
+     *
+     * ```java
+     * public final MediaSession onGetSession(MediaSession.ControllerInfo info) {
+     *     Log.i("CarAutoResume", "onGetSession controller=" + info.getPackageName());
+     *     return o5.w.l0();      // ← 没有活跃会话时返回 null
+     * }
+     * ```
+     *
+     * 返回 null 就等于拒绝连接。而它的会话要等播放器真正初始化（开始播放）才就绪，
+     * 所以**空等没用，只能重试到它开始放歌**。
+     *
+     * 以前没有重试：失败一次就再也不管，于是"先开桌面、后开音乐"的用户看到的
+     * 是一张永远空着的卡（没封面、没歌词、播放键也没反应），直到某次界面重建才突然好。
+     *
+     * 3 秒封顶是一开始的想法，后来改成阶梯：前几次密一点，抓住「音乐刚启动」的那个窗口；
+     * 之后放缓到 10 秒——连不上多半意味着对方还没被人点开，每 3 秒去敲一次没有意义，
+     * 也不该一直耗电。
+     */
+    private val connectRetryDelays = longArrayOf(1_000L, 2_000L, 3_000L, 5_000L, 10_000L)
+
+    /**
+     * 一次连接挂多久算卡住。
+     *
+     * `buildAsync` 正常要么很快成功、要么很快失败；但如果对方进程正在冷启动，
+     * future 可能长时间悬着。悬着时 [connecting] 一直是 true，[start] 会直接 return，
+     * 等于永远不重试。超过这个时间就主动放弃重来。
+     */
+    private const val CONNECT_STUCK_MS = 4_000L
 
     /** 刚 attach 完的这段时间里来的 isPlaying=true 是重连回放，不是用户按的播放 */
     private const val LYRIC_RETRY_QUIET_MS = 2_000L
@@ -166,18 +207,30 @@ object MusicController {
     /** 最近一次 attach 的时刻。重连后对方会补发一次 isPlaying=true，那不是用户按的播放 */
     private var lastAttachAt = 0L
 
+    /** 本轮连接开始的时刻：用来判断 future 是不是挂住了 */
+    private var connectStartedAt = 0L
+
+    /** 连续连不上几次了，决定下一次退避多久 */
+    private var connectRetry = 0
+
+    /** 下次允许发起连接的时刻（elapsedRealtime）；0 = 现在就可以 */
+    private var nextConnectAt = 0L
+
     /** 合并短时间内的多次重连请求（连点下一首时只重连一次） */
     private val resyncTask = Runnable { resyncForTrackChange() }
 
     private val tick = object : Runnable {
         override fun run() {
+            // 放在最前：断线时后面几步全是空转，先把连接捡回来。
+            // 「先开桌面、后开音乐」全靠这一步兜住（详见 connectRetryDelays 的注释）
+            ensureConnected()
             controller?.let { c ->
                 if (c.isPlaying) clock.sync(c.currentPosition, 1f, durationMs)
                 detectTrackChange(c)
             }
             maybeRetryLyric()
             publish()
-            handler.postDelayed(this, 800L)
+            handler.postDelayed(this, TICK_MS)
         }
     }
 
@@ -185,7 +238,65 @@ object MusicController {
 
     fun start(ctx: Context) {
         context = ctx.applicationContext
+        // 心跳必须先跑起来：断线重连全靠它，没有它「后开音乐」就永远连不上
+        handler.removeCallbacks(tick)
+        handler.post(tick)
         if (controller != null || connecting) return
+        connect()
+    }
+
+    /**
+     * 保证「最终连上」。
+     *
+     * 桌面是 HOME，开机就起；md3Music 通常还没被用户点开，那一刻连接必然失败
+     * （实测日志：`连接失败：md3Music 未安装或未启动`）。以前失败后没人管，
+     * 于是先开桌面、后开音乐的用户会看到长时间的空卡：封面、歌词、播放键全都不动，
+     * 一直等到某次 Fragment 重建才突然正常。
+     *
+     * 现在每次心跳都检查一次，没连上就按 [connectRetryDelays] 退避重试，直到连上为止。
+     */
+    private fun ensureConnected() {
+        if (controller != null) {
+            if (connectRetry != 0) Log.i(TAG, "已连上 md3Music，停止重连")
+            connectRetry = 0
+            nextConnectAt = 0L
+            return
+        }
+        val now = SystemClock.elapsedRealtime()
+        if (connecting) {
+            // future 悬着不返回：多半对方进程在冷启动。超过阈值就丢掉重来，
+            // 否则 connecting 一直是 true，谁也进不来
+            if (now - connectStartedAt < CONNECT_STUCK_MS) return
+            Log.w(TAG, "连接 ${now - connectStartedAt}ms 没有结果，放弃重来")
+            runCatching { pending?.cancel(true) }
+            pending = null
+            connecting = false
+            armConnectRetry()
+            return
+        }
+        if (now < nextConnectAt) return
+        connect()
+    }
+
+    /** 排下一次重连：从 1 秒起步退到 3 秒封顶，之后一直按 3 秒试 */
+    private fun armConnectRetry() {
+        val idx = connectRetry.coerceAtMost(connectRetryDelays.lastIndex)
+        val delay = connectRetryDelays[idx]
+        connectRetry++
+        nextConnectAt = SystemClock.elapsedRealtime() + delay
+        Log.i(TAG, "md3Music 还没就绪（会话未创建），${delay}ms 后重试（第 $connectRetry 次）")
+    }
+
+    /**
+     * 立刻重试一次，不等退避。
+     *
+     * 桌面回到前台时调：用户从音乐 App 切回来，正是最想看到歌词的那一刻，
+     * 这时候还让他等 3 秒就太钝了。失败也没关系，退避节奏会接管。
+     */
+    fun retryNow() {
+        if (controller != null || connecting) return
+        connectRetry = 0
+        nextConnectAt = 0L
         connect()
     }
 
@@ -194,6 +305,7 @@ object MusicController {
         if (connecting) return
 
         connecting = true
+        connectStartedAt = SystemClock.elapsedRealtime()
         lastError = ""
 
         // SessionToken 的构造会校验目标 service 是否声明了 MediaSessionService /
@@ -214,19 +326,28 @@ object MusicController {
 
         future.addListener({
             connecting = false
-            val c = runCatching { future.get() }.getOrNull()
+            val result = runCatching { future.get() }
+            val c = result.getOrNull()
             if (c == null) {
                 resyncing = false
-                lastError = "连接失败：md3Music 未安装或未启动"
-                Log.w(TAG, lastError)
+                pending = null
+                // 音乐还没起来是**常态**（桌面开机就起），不是错误，排下一次重试即可。
+                // 但异常类型必须打出来：能区分「服务还没起」和「起了但协议对不上」，
+                // 后者重试一万次也没用
+                val err = result.exceptionOrNull()
+                lastError = "等待 md3Music 启动…"
+                Log.w(
+                    TAG,
+                    "连接失败 ${err?.javaClass?.simpleName}: ${err?.message}，稍后重试",
+                    err,
+                )
                 publish()
+                armConnectRetry()
                 return@addListener
             }
+            pending = null
             attach(c)
         }, ContextCompat.getMainExecutor(ctx))
-
-        handler.removeCallbacks(tick)
-        handler.post(tick)
     }
 
     private fun attach(c: MediaController) {
@@ -234,6 +355,9 @@ object MusicController {
         val recovering = resyncing
         controller?.removeListener(playerListener)
         controller = c
+        // 连上了：重连退避从头计
+        connectRetry = 0
+        nextConnectAt = 0L
         c.addListener(playerListener)
         resyncing = false
         lastAttachAt = SystemClock.elapsedRealtime()
@@ -244,11 +368,19 @@ object MusicController {
 
         val meta = c.mediaMetadata
         if (meta.title.isNullOrEmpty() && meta.artist.isNullOrEmpty() && meta.artworkData == null) {
-            // 刚换歌就重连时，对方可能还没把新曲目写进会话，读回来是空的。
-            // 这时**不要**把旧值清掉（会闪成「暂无播放」），保留并稍后重试。
-            if (recovering && emptyMetaRetries < MAX_EMPTY_META_RETRIES) {
+            // 读到空元数据有两种情况，都要重连补读：
+            //  1. 换歌瞬间重连，对方还没把新曲目写进会话（recovering）；
+            //  2. **刚把 md3Music 拉起来时连上**——它那时就是空的，而且不会补推一条。
+            // 第 2 种以前直接 return 了，结果是「连上了但卡片永远空着」：
+            // title 为空 → 歌词补拉不启动（maybeRetryLyric 要求 title 非空）→ 死等。
+            // 注意不能只重读 controller：它的缓存本身就是空的，只能重新连一次。
+            if (emptyMetaRetries < MAX_EMPTY_META_RETRIES) {
                 emptyMetaRetries++
-                Log.i(TAG, "重连后元数据为空，稍后重试（第 $emptyMetaRetries 次）")
+                Log.i(
+                    TAG,
+                    "连上了但元数据为空（recovering=$recovering），" +
+                        "${RESYNC_RETRY_MS}ms 后重连补读（第 $emptyMetaRetries 次）",
+                )
                 publish()
                 scheduleResync(RESYNC_RETRY_MS, force = true, retry = true)
                 return
@@ -567,20 +699,83 @@ object MusicController {
 
     // ---------------------------------------------------------------- 控制
 
+    /**
+     * 播放/暂停。
+     *
+     * 没连上时不再静默 return —— 那时候卡片是空的，用户点按钮就是想让音乐响，
+     * 直接 `return` 等于按钮坏了。改成把播放器拉起来，连接随后自己会完成
+     * （md3Music 只有在它自己的会话就绪后才接受 controller，见 [connectRetryDelays]）。
+     */
     fun playPause() {
-        val c = controller ?: return
+        val c = controller
+        if (c == null) {
+            launchPlayer()
+            return
+        }
         if (c.isPlaying) c.pause() else c.play()
     }
 
     fun next() {
-        if (controller?.seekToNextMediaItem() == null) return
+        val c = controller
+        if (c == null) {
+            launchPlayer()
+            return
+        }
+        if (c.seekToNextMediaItem() == null) return
         // 对方换歌不推元数据，自己主动排一次重连；force 是为了跳过刚连上时的静默期
         scheduleResync(RESYNC_AFTER_SKIP_MS, force = true)
     }
 
     fun previous() {
-        if (controller?.seekToPreviousMediaItem() == null) return
+        val c = controller
+        if (c == null) {
+            launchPlayer()
+            return
+        }
+        if (c.seekToPreviousMediaItem() == null) return
         scheduleResync(RESYNC_AFTER_SKIP_MS, force = true)
+    }
+
+    /** 没连上时的兜底：至少把音乐 App 拉起来，别让按钮看起来是坏的 */
+    private fun launchPlayer() {
+        val ctx = context ?: return
+        val intent = ctx.packageManager.getLaunchIntentForPackage(MD3_PKG) ?: return
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { ctx.startActivity(intent) }
+            .onFailure { Log.w(TAG, "拉起 md3Music 失败：$it") }
+        // 它起来之后会话才会就绪，这里顺手排一次连接
+        retryNow()
+    }
+
+    /** 已经连上播放器了吗（开机自启要靠它判断「要不要去拉音乐」） */
+    val isConnected: Boolean get() = controller != null
+
+    /**
+     * 开机自启：把 md3Music 的界面拉起来，让它续播上次队列。
+     *
+     * 只负责"拉起界面"这一件事——它一旦被拉起就会自己建队列并开始播放
+     * （实测 force-stop 后 `am start`，12 秒内会话 `state=3`；期间切回桌面也不影响，
+     * 后台照样把播放跑起来）。所以这里**不要**补 `play()`：那一刻会话还没建，
+     * 下发出去没人接，反而会打乱连接状态机。
+     *
+     * @return 是否真的发起了启动；没有音乐应用、或已经连上时返回 false
+     */
+    fun autoStart(): Boolean {
+        if (controller != null) return false
+        val ctx = context ?: return false
+        val intent = ctx.packageManager.getLaunchIntentForPackage(MD3_PKG) ?: run {
+            Log.w(TAG, "开机自启：找不到 $MD3_PKG")
+            return false
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val ok = runCatching { ctx.startActivity(intent) }
+            .onFailure { Log.w(TAG, "开机自启拉起 md3Music 失败：$it") }
+            .isSuccess
+        if (ok) {
+            Log.i(TAG, "开机自启：已拉起 md3Music，等它建会话")
+            retryNow()
+        }
+        return ok
     }
 
     fun seekTo(ms: Long) {
@@ -600,5 +795,8 @@ object MusicController {
         lastPos = 0L
         lastDur = 0L
         lastResyncAt = 0L
+        connectStartedAt = 0L
+        connectRetry = 0
+        nextConnectAt = 0L
     }
 }

@@ -23,6 +23,7 @@ import com.lf.launcher.databinding.ActivityLauncherBinding
 import com.lf.launcher.home.HomeFragment
 import com.lf.launcher.home.LauncherWindowState
 import com.lf.launcher.home.MapAppLauncher
+import com.lf.launcher.music.MusicController
 import com.lf.launcher.settings.Keys
 import com.lf.launcher.settings.SettingsActivity
 import com.lf.launcher.settings.SettingsStore
@@ -112,6 +113,10 @@ class LauncherActivity : ThemedActivity() {
         // 均衡器挂在全局输出混音上，进程被回收后 effect 会丢；每次回前台按存的配置重挂一次。
         // 设置页里改过开关也是靠这一步生效（那边只写配置，不下发）。
         com.lf.launcher.eq.EqSettings.restore()
+        // 音乐卡：桌面是 HOME，开机就起，那时 md3Music 往往还没启动，它的会话会直接
+        // 拒绝连接（onGetSession 返回 null），只能靠重试等到它开始放歌。
+        // 回到前台的这一刻用户就在看卡片，别再等 3 秒退避
+        com.lf.launcher.music.MusicController.retryNow()
         // 是从我们自己的二级页（设置 / 选择器）回来的：这时候把人拉去地图最招人烦，
         // 而且要在这里就把 returnToHome 读出来 —— 下面马上会清掉它
         val fromOwnPage = returnToHome
@@ -133,6 +138,7 @@ class LauncherActivity : ThemedActivity() {
         // 注意不能写进 fromOwnPage 的短路表达式里：那样 fromOwnPage 为真时它压根不执行
         val askingPermission = maybeAskPermissions()
         scheduleAutoMap(skip = fromOwnPage || askingPermission)
+        maybeAutoStartMusic(skip = fromOwnPage || askingPermission)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -208,6 +214,8 @@ class LauncherActivity : ThemedActivity() {
         handler.removeCallbacks(autoMapLaunch)
         handler.removeCallbacks(autoMapBack)
         handler.removeCallbacks(autoMapWatchdog)
+        handler.removeCallbacks(musicAutoStart)
+        handler.removeCallbacks(musicBack)
         super.onDestroy()
     }
 
@@ -439,6 +447,108 @@ class LauncherActivity : ThemedActivity() {
         autoMapBackScheduled = false
         suppressAutoMap = true
         // 自己是 singleTask：这个 Intent 不会新建实例，只是把桌面所在的任务提到前台
+        runCatching {
+            startActivity(
+                Intent(this, LauncherActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+    }
+
+    // ---------------------------------------------------------- 开机自动播放音乐
+
+    /** 开机后多久之内才允许自动拉音乐。过了这个窗口，用户每次按 HOME 回来都不该被弹进音乐 App */
+    private val bootMusicWindowMs = 120_000L
+
+    /**
+     * 排给 [musicAutoStart] 的延时。
+     *
+     * 不能在这一趟 onResume 里直接拉：那时「自动拉起地图」刚排好队（400ms 后拉起高德），
+     * 两个流程同时抢前台会互相盖。地图那趟从拉起到切回大约 5 秒，所以开了自动地图就多等一会；
+     * 没开的话桌面已经空着，早点拉没坏处。
+     */
+    private val musicAutoStartDelayNoMap = 1_200L
+    private val musicAutoStartDelayWithMap = 6_000L
+
+    /** 拉起音乐后多久切回桌面：给它时间把界面画出来，剩下的初始化在后台自己跑完 */
+    private val musicBackDelayMs = 1_500L
+
+    /** 开机自动播放这辈子只试一次，别每次回桌面都去拉 */
+    private var autoMusicTried = false
+
+    /**
+     * 开机后把 md3Music 拉起来，续播上一次的队列。
+     *
+     * 为什么必须由桌面来做：md3Music 的 manifest 里没有 BOOT_COMPLETED 接收者，
+     * dex 里也没有任何「开机自启 / 自动播放」设置项。系统自启管理最多把它的**进程**
+     * 拉起来，没有界面就不会建播放队列 —— 实测开机一分半后它 0 个会话、0 个播放器，
+     * 桌面只能显示「暂无播放」。
+     *
+     * 反过来，只要它的启动界面被拉起一次，就会自己恢复上次队列并开始播放
+     * （实测 force-stop 后只 `am start`，12 秒内会话 `state=3`；中途按 HOME 也不影响，
+     * 后台照样把播放跑起来）。所以这里拉一下、[musicBackDelayMs] 后切回桌面即可。
+     *
+     * 只在开机窗口内做，是因为它是 HOME：用户平时按 HOME 回来也会走 onResume，
+     * 那时候再把他弹进音乐 App 就成了打扰。
+     */
+    private fun maybeAutoStartMusic(skip: Boolean = false) {
+        if (autoMusicTried) return
+        if (SystemClock.elapsedRealtime() > bootMusicWindowMs) {
+            autoMusicTried = true
+            return
+        }
+        // 从设置页/权限框回来：这一次先不动，下一次 onResume 再说
+        if (skip) return
+        if (!SettingsStore.getBool(Keys.MUSIC_AUTOSTART, true)) {
+            autoMusicTried = true
+            return
+        }
+        // 已经在放（比如上次熄火时音乐没停、系统自己拉起来了）：不要多此一举
+        if (MusicController.isConnected) {
+            autoMusicTried = true
+            return
+        }
+        // 这一刻通常正好排在「自动拉起地图」后面，直接拉会抢前台，交给延时任务
+        handler.removeCallbacks(musicAutoStart)
+        handler.postDelayed(
+            musicAutoStart,
+            if (autoMapPending) musicAutoStartDelayWithMap else musicAutoStartDelayNoMap,
+        )
+    }
+
+    /**
+     * 真正去拉音乐的那一下。
+     *
+     * 桌面不在前台就先放手 —— 说明地图（或别的东西）还盖着，等下次 onResume 重排。
+     * 这里不自己重试，否则万一前台一直不是自己，就变成无限循环了。
+     */
+    private val musicAutoStart = object : Runnable {
+        override fun run() {
+            if (autoMusicTried) return
+            if (SystemClock.elapsedRealtime() > bootMusicWindowMs) {
+                autoMusicTried = true
+                return
+            }
+            if (MusicController.isConnected) {
+                autoMusicTried = true
+                return
+            }
+            if (!resumed) return
+            autoMusicTried = true
+            if (!MusicController.autoStart()) return
+            handler.postDelayed(musicBack, musicBackDelayMs)
+        }
+    }
+
+    /**
+     * 音乐盖上来之后把自己请回前台。
+     *
+     * [resumed] 为 false = 已经不在前台，开机后这一瞬只可能是刚拉起的音乐，
+     * 直接切回来；为 true = 音乐还没起来（冷启动慢），那就什么都不用做，
+     * 它会在后台自己走完初始化并开始播放。
+     */
+    private val musicBack = Runnable {
+        if (resumed) return@Runnable
         runCatching {
             startActivity(
                 Intent(this, LauncherActivity::class.java)
