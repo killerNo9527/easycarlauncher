@@ -8,6 +8,7 @@ import android.widget.Toast
 import com.lf.launcher.R
 import com.lf.launcher.home.MapAppLauncher
 import com.lf.launcher.music.MusicController
+import com.lf.launcher.ui.Permissions
 import com.lf.launcher.weather.WeatherApi
 import com.lf.launcher.weather.WeatherLocator
 import com.lf.launcher.weather.WeatherStore
@@ -286,6 +287,38 @@ object SettingsSpec {
         ) {
             val intent = context.packageManager.getLaunchIntentForPackage(MusicController.MD3_PKG)
             if (intent != null) runCatching { context.startActivity(intent) }
+        }
+
+        items += SettingItem.Section("权限")
+        val missingPermissions = Permissions.missingRuntime(context)
+        items += SettingItem.ActionItem(
+            "运行时权限",
+            "位置：天气卡按定位自动换城市；电话：状态栏信号格数。" +
+                "首次启动时已经统一问过一次，误点拒绝的话在这里补",
+            value = if (missingPermissions.isEmpty()) {
+                "已全部授予"
+            } else {
+                "缺 ${Permissions.describe(missingPermissions)}"
+            },
+        ) {
+            (context as? SettingsActivity)?.requestMissingPermissions()
+        }
+        val overlayOk = Permissions.overlayGranted(context)
+        items += SettingItem.ActionItem(
+            "悬浮窗权限",
+            "在地图卡上盖圆角遮罩用。不开也能用，只是地图卡四角会变成直角",
+            value = if (overlayOk) "已开启" else "未开启",
+        ) {
+            val activity = context as? android.app.Activity ?: return@ActionItem
+            if (overlayOk) {
+                Toast.makeText(context, "已经开了", Toast.LENGTH_SHORT).show()
+            } else if (!Permissions.requestOverlay(activity)) {
+                Toast.makeText(
+                    context,
+                    "这台车机没有这个设置页，请到 系统设置 → 应用 → 权限 里手动打开",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
         }
 
         items += SettingItem.Section("关于")

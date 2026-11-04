@@ -62,6 +62,10 @@ object Keys {
     const val PAD_START = "pad_start"
     const val PAD_END = "pad_end"
 
+    // 首次启动的权限引导：只做一次，之后缺权限走设置页「权限」分组
+    const val PERMISSION_ASKED = "permission_asked"  // 运行时权限已批量申请过
+    const val OVERLAY_ASKED = "overlay_asked"        // 悬浮窗权限已引导过
+
     // 卡片
     const val CARD_TIME = "card_time"
     const val CARD_MUSIC = "card_music"
@@ -121,4 +125,8 @@ object Defaults {
 
     /** 开始导航时自动校正悬浮窗视口 */
     const val AMAP_NAV_NUDGE = true
+
+    /** 首次启动的权限引导默认都没做过（false = 还没问过） */
+    const val PERMISSION_ASKED = false
+    const val OVERLAY_ASKED = false
 }

@@ -6,8 +6,11 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import android.view.View
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.lf.launcher.ui.Permissions
 import com.lf.launcher.ui.StatusTray
 import com.lf.launcher.ui.SystemUi
 import com.lf.launcher.ui.ThemedActivity
@@ -124,7 +127,12 @@ class LauncherActivity : ThemedActivity() {
         LauncherWindowState.setPage(binding.viewPager.currentItem, false)
         LauncherWindowState.setResumed(true)
         renderStatusBar()
-        scheduleAutoMap(skip = fromOwnPage)
+        // 首次装完进桌面时把权限一次问齐（见 maybeAskPermissions）。
+        // 返回 true 表示刚弹了系统授权框 —— 这时候别再自动拉起地图，
+        // 否则授权框会被地图盖掉，用户还会以为是自己点错了。
+        // 注意不能写进 fromOwnPage 的短路表达式里：那样 fromOwnPage 为真时它压根不执行
+        val askingPermission = maybeAskPermissions()
+        scheduleAutoMap(skip = fromOwnPage || askingPermission)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -212,10 +220,73 @@ class LauncherActivity : ThemedActivity() {
     }
 
     /**
+     * 首次装完进桌面时，把运行时权限一次问齐。
+     *
+     * ## 为什么改成"一进来就问"
+     *
+     * 原来的策略是"用到才申请"——点信号格才要电话、开自动定位才要位置。对老用户舒服，
+     * 但新用户装完看到的是一个天气空着、信号格空着的桌面，**没有任何线索**告诉他要先点
+     * 那个图标才会触发授权。所以第一次进桌面就一次问完，之后永久静默。
+     *
+     * ## 只问一次
+     *
+     * 标记 [Keys.PERMISSION_ASKED] 在请求**之前**落盘：授权框会让 Activity 走一轮
+     * onPause/onResume，标记写在后面会被这轮 onResume 再触发一次，变成连弹两轮。
+     * 用户拒绝也不重问 —— 缺的交给设置页「权限」分组补，不骚扰。
+     *
+     * @return true 表示刚弹了系统授权框，调用方要跳过「自动拉起地图」
+     */
+    private fun maybeAskPermissions(): Boolean {
+        if (SettingsStore.getBool(Keys.PERMISSION_ASKED, false)) {
+            maybeAskOverlay()
+            return false
+        }
+        SettingsStore.setBool(Keys.PERMISSION_ASKED, true)
+        val missing = Permissions.missingRuntime(this)
+        if (missing.isEmpty()) {
+            maybeAskOverlay()
+            return false
+        }
+        runCatching { requestPermissions(missing.toTypedArray(), REQ_ALL) }
+            .onFailure { Log.w(TAG, "批量申请权限失败：$it") }
+        return true
+    }
+
+    /**
+     * 悬浮窗权限的引导。
+     *
+     * 它不能 `requestPermissions` —— 属于特殊权限，只能跳系统页让用户自己开。
+     * 所以单独一次说明弹窗，且**不拦路**：不给也能用，只是地图卡四角变直角。
+     */
+    private fun maybeAskOverlay() {
+        if (SettingsStore.getBool(Keys.OVERLAY_ASKED, false)) return
+        if (Permissions.overlayGranted(this)) return
+        SettingsStore.setBool(Keys.OVERLAY_ASKED, true)
+        // 让桌面先画完一帧：刚弹完系统授权框紧接着再来一个自己的对话框会很挤
+        handler.postDelayed({ showOverlayDialog() }, OVERLAY_PROMPT_DELAY_MS)
+    }
+
+    private fun showOverlayDialog() {
+        if (isFinishing || isDestroyed) return
+        AlertDialog.Builder(this)
+            .setTitle("还差一个悬浮窗权限")
+            .setMessage(
+                "地图卡显示高德时，要在它的窗口上盖一层圆角遮罩，这需要「显示在其他应用上层」。\n\n" +
+                    "不给也能用，只是地图卡四角会变成直角。随时可以在 设置 → 权限 里补开。",
+            )
+            .setPositiveButton("去开启") { _, _ ->
+                if (!Permissions.requestOverlay(this)) {
+                    toast("这台车机没有这个设置页，请到 系统设置 → 应用 → 权限 里手动打开")
+                }
+            }
+            .setNegativeButton("暂不", null)
+            .show()
+    }
+
+    /**
      * 状态栏信号格第一次被点时申请的 `READ_PHONE_STATE`。
      *
-     * 桌面是开机自启的 HOME，不适合一启动就弹权限框，所以把这个请求推迟到用户
-     * 真去点信号图标那一刻 —— 他知道自己在申请什么。
+     * 首次启动已经统一要过了，这条是用户当时拒了、后来又去点信号格的补救路径。
      */
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -223,11 +294,26 @@ class LauncherActivity : ThemedActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == StatusTray.REQ_PHONE) {
-            statusTray.onPhonePermissionResult(
+        when (requestCode) {
+            StatusTray.REQ_PHONE -> statusTray.onPhonePermissionResult(
                 grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
             )
+
+            REQ_ALL -> {
+                val missing = Permissions.missingRuntime(this)
+                if (missing.isEmpty()) {
+                    toast("权限已就绪")
+                } else {
+                    // 用户点了拒绝也算正常结果，不追着问：告诉他去哪儿补就行
+                    toast("还差「${Permissions.describe(missing)}」，可在 设置 → 权限 里补")
+                }
+                maybeAskOverlay()
+            }
         }
+    }
+
+    private fun toast(msg: String) {
+        android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
     }
 
     /**
@@ -441,8 +527,16 @@ class LauncherActivity : ThemedActivity() {
     }
 
     companion object {
+        private const val TAG = "Launcher"
+
         /** 重建（日夜切换、内存回收）时用来恢复当前页 */
         private const val STATE_PAGE = "launcher_page"
+
+        /** 首次启动批量申请运行时权限的请求码（避开 StatusTray 的 7001 那一档） */
+        const val REQ_ALL = 8301
+
+        /** 权限框刚消失后等多久再弹悬浮窗说明，别两个框挤在一起 */
+        private const val OVERLAY_PROMPT_DELAY_MS = 900L
 
         /** 桌面回到前台后延迟多久拉起地图：先让它画完一帧，别切过去还是空的 */
         private const val AUTO_MAP_OPEN_DELAY_MS = 400L

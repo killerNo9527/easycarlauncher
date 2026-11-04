@@ -2,8 +2,11 @@ package com.lf.launcher.settings
 
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.lf.launcher.ui.Appearance
+import com.lf.launcher.ui.Permissions
 import com.lf.launcher.ui.SystemUi
 import com.lf.launcher.ui.ThemedActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -85,23 +88,71 @@ class SettingsActivity : ThemedActivity() {
         requestPermissions(WeatherLocator.PERMISSIONS, REQ_LOCATION)
     }
 
+    /**
+     * 补授运行时权限（设置 → 权限 → 运行时权限）。
+     *
+     * 首次启动已经统一问过一次，这里是用户当时拒了之后的唯一入口 ——
+     * 系统不会再自动弹，只能他自己进来点。
+     */
+    fun requestMissingPermissions() {
+        val missing = Permissions.missingRuntime(this)
+        if (missing.isEmpty()) {
+            Toast.makeText(this, "已经全部授予了", Toast.LENGTH_SHORT).show()
+            refreshItems()
+            return
+        }
+        requestPermissions(missing.toTypedArray(), REQ_ALL)
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode != REQ_LOCATION) return
-        val ok = WeatherLocator.hasPermission(this)
-        val cb = afterPermission
-        afterPermission = null
-        // 权限回来之后刷新列表：开关状态/摘要文案可能已经变了
-        refreshItems()
-        cb?.invoke(ok)
+        when (requestCode) {
+            REQ_ALL -> {
+                refreshItems()
+                val missing = Permissions.missingRuntime(this)
+                if (missing.isEmpty()) {
+                    Toast.makeText(this, "权限已就绪", Toast.LENGTH_SHORT).show()
+                    return
+                }
+                // 一条都弹不出来了（用户勾过"不再询问"）：系统页里手动开是唯一的路
+                if (missing.all { Permissions.isBlocked(this, it) }) {
+                    AlertDialog.Builder(this)
+                        .setTitle("系统不再弹授权框了")
+                        .setMessage(
+                            "「${Permissions.describe(missing)}」被设为不再询问，只能到应用信息页里手动打开。",
+                        )
+                        .setPositiveButton("去设置") { _, _ -> Permissions.openAppDetails(this) }
+                        .setNegativeButton("取消", null)
+                        .show()
+                } else {
+                    Toast.makeText(
+                        this,
+                        "还差「${Permissions.describe(missing)}」",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+
+            REQ_LOCATION -> {
+                val ok = WeatherLocator.hasPermission(this)
+                val cb = afterPermission
+                afterPermission = null
+                // 权限回来之后刷新列表：开关状态/摘要文案可能已经变了
+                refreshItems()
+                cb?.invoke(ok)
+            }
+        }
     }
 
     private companion object {
         const val REQ_LOCATION = 7101
+
+        /** 与 LauncherActivity.REQ_ALL 不同值：两个页面各自处理自己的回调 */
+        const val REQ_ALL = 7301
     }
 
     override fun onPause() {
