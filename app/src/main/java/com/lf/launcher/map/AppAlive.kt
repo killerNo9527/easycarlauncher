@@ -23,9 +23,6 @@ object AppAlive {
 
     private const val TAG = "AppAlive"
 
-    /** 自己人，不算"第三方" */
-    private val OWN_PACKAGES = setOf("android", "com.android.systemui")
-
     /**
      * @return true 在跑 / false 不在跑 / null 这个 ROM 不给看
      */

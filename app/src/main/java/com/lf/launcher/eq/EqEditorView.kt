@@ -47,7 +47,6 @@ class EqEditorView @JvmOverloads constructor(
 
         private val BG = Color.parseColor("#12151A")
         private val GRID = Color.parseColor("#252A32")
-        private val GRID_STRONG = Color.parseColor("#39414D")
         private val CURVE = Color.parseColor("#35C6F4")
         private val CURVE_FILL = Color.parseColor("#2235C6F4")
         private val BAR_TRACK = Color.parseColor("#2A2F38")

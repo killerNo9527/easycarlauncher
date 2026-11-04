@@ -20,7 +20,6 @@
 <resources>
     <!-- 栅格 -->
     <dimen name="sidebar_width">56dp</dimen>
-    <dimen name="right_container_width">240dp</dimen>
     <dimen name="right_container_card_spacing">6dp</dimen>
     <dimen name="content_padding_end">12dp</dimen>
     <dimen name="home_card_corner_radius">14dp</dimen>
@@ -67,7 +66,6 @@
 
     <!-- 音乐卡内部 -->
     <dimen name="album_cover_size">44dp</dimen>
-    <dimen name="lyric_line_height">24dp</dimen>
     <dimen name="lyric_text_size">13sp</dimen>
     <dimen name="lyric_current_text_size">17sp</dimen>
     <dimen name="lyric_translation_text_size">11sp</dimen>
@@ -76,22 +74,14 @@
     <dimen name="bottom_cover_size">46dp</dimen>
     <dimen name="bottom_title_text_size">16sp</dimen>
     <dimen name="bottom_artist_text_size">12sp</dimen>
-    <dimen name="control_btn_small">40dp</dimen>
-    <dimen name="control_btn_play">50dp</dimen>
-    <dimen name="control_gap">24dp</dimen>
 
     <!-- 应用列表 -->
     <dimen name="app_icon_size">44dp</dimen>
-    <dimen name="app_grid_spacing">10dp</dimen>
     <dimen name="app_label_text_size">10sp</dimen>
     <dimen name="app_list_padding_horizontal">24dp</dimen>
     <dimen name="app_list_padding_vertical">16dp</dimen>
 
     <!-- 控制键图标 -->
-    <dimen name="control_icon_play">18sp</dimen>
-    <dimen name="control_icon_small">10sp</dimen>
-    <dimen name="control_icon_inset">8dp</dimen>
-    <dimen name="control_gap_horizontal">12dp</dimen>
 
     <!-- 地图区空态 -->
     <dimen name="map_title_text_size">15sp</dimen>

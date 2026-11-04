@@ -3,7 +3,6 @@
     <string name="app_name">车载桌面</string>
 
     <!-- 首页卡片 -->
-    <string name="card_time_placeholder">--:--</string>
     <string name="card_music_title">暂无播放</string>
     <string name="card_music_artist">点击打开音乐</string>
     <string name="card_monitor_title">负载</string>
@@ -11,9 +10,7 @@
     <string name="card_lyric_placeholder">暂无歌词</string>
 
     <!-- 应用列表 -->
-    <string name="app_list_title">全部应用</string>
     <string name="app_list_empty">没有找到可启动的应用</string>
 
     <!-- 星期 -->
-    <string name="weekday_format">%1$s</string>
 </resources>

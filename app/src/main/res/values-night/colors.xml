@@ -6,15 +6,12 @@
 -->
 <resources>
     <color name="bg_base">#0B0D10</color>
-    <color name="bg_scrim">#66000000</color>
 
     <!-- 卡片：半透明深色 + 自上而下的轻微明度差，MT8666 上避免与模糊层叠加掉帧 -->
     <color name="card_bg">#CC161A1F</color>
     <color name="card_bg_top">#F01B2129</color>
     <color name="card_bg_bottom">#D911151B</color>
-    <color name="card_bg_solid">#1A1D22</color>
     <color name="card_stroke">#1FFFFFFF</color>
-    <color name="card_stroke_soft">#12FFFFFF</color>
 
     <color name="text_primary">#F2F4F7</color>
     <color name="text_secondary">#98A0AE</color>
@@ -32,7 +29,6 @@
     <color name="map_well">#0F151D</color>
 
     <color name="app_label">#E6EAF0</color>
-    <color name="app_label_dim">#99A0AE</color>
 
     <!-- ↓↓↓ 以下给 drawable 用：夜间偏深 ↓↓↓ -->
     <color name="wallpaper_top">#121A26</color>
@@ -51,8 +47,6 @@
 
     <color name="ctrl_bg">#26FFFFFF</color>
     <color name="ctrl_bg_pressed">#33FFFFFF</color>
-    <color name="chip_bg">#14FFFFFF</color>
-    <color name="chip_stroke">#1FFFFFFF</color>
 
     <color name="icon_tint">#FFC8D4E0</color>
     <color name="icon_strong">#FFFFFF</color>
