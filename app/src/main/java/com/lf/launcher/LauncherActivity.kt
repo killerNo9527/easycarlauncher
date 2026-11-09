@@ -303,6 +303,7 @@ class LauncherActivity : ThemedActivity() {
         handler.removeCallbacks(autoMapWatchdog)
         handler.removeCallbacks(musicAutoStart)
         handler.removeCallbacks(musicBack)
+        handler.removeCallbacks(musicReturn)
         super.onDestroy()
     }
 
@@ -797,6 +798,58 @@ class LauncherActivity : ThemedActivity() {
                 Intent(this, LauncherActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
+        }
+    }
+
+    // ---------------------------------------------------------- 双击音乐卡的回桌面
+
+    /** 双击回桌面的已尝试次数，防止极端情况下无限重排 */
+    private var musicReturnTries = 0
+
+    /**
+     * 双击音乐卡兜底：打开音乐界面 [delayMs] 后把桌面请回前台。
+     *
+     * 和开机那趟的 [musicBack] 不一样 —— 那个遇到「地图正在收尾」会主动让路然后**结束**，
+     * 因为开机时地图和音乐都是流程自己发起的，让谁收尾都行。
+     * 这里是用户主动双击，桌面**必须**回来，所以让路只是重排，不是放弃。
+     */
+    fun comeBackAfterMusic(delayMs: Long = 1_000L) {
+        musicReturnTries = 0
+        handler.removeCallbacks(musicReturn)
+        handler.postDelayed(musicReturn, delayMs)
+    }
+
+    private val musicReturn = object : Runnable {
+        override fun run() {
+            if (resumed) {
+                // 已经在前台：要么音乐没盖上来，要么上一次已经切回来了
+                musicReturnTries = 0
+                return
+            }
+            if (musicReturnTries >= 10) {
+                FlowLog.w(FLOW, "双击回桌面：重试 10 次仍未回到前台，放弃")
+                musicReturnTries = 0
+                return
+            }
+            musicReturnTries++
+            // 地图正在收尾：让它先把桌面带回来，省得两边抢；但过一会一定要复查
+            if (autoMapPending || autoMapBackScheduled) {
+                FlowLog.i(FLOW, "双击回桌面：地图流程在收尾，600ms 后重试（第 $musicReturnTries 次）")
+                handler.postDelayed(this, 600)
+                return
+            }
+            // 这次 onResume 是自己造成的，压掉自动拉地图，免得又弹一次高德
+            suppressAutoMap = true
+            musicFlowAt = 0
+            val ok = runCatching {
+                startActivity(
+                    Intent(this@LauncherActivity, LauncherActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                )
+            }.onFailure { FlowLog.w(FLOW, "双击回桌面：startActivity 失败 $it") }.isSuccess
+            FlowLog.i(FLOW, "双击回桌面：切回桌面 ok=$ok（第 $musicReturnTries 次）")
+            // 700ms 后复查：还没回到前台就再来一次（上面 resumed 会直接结束）
+            handler.postDelayed(this, 700)
         }
     }
 

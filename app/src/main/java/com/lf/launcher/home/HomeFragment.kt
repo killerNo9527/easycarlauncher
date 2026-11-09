@@ -11,7 +11,9 @@ import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
 import android.util.TypedValue
+import android.view.GestureDetector
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
@@ -32,6 +34,7 @@ import com.lf.launcher.ui.CircleArtView
 import com.lf.launcher.ui.ScrollTextView
 import com.lf.launcher.music.LastPlayed
 import com.lf.launcher.music.MusicController
+import com.lf.launcher.music.MusicLauncher
 import com.lf.launcher.settings.CardOrder
 import com.lf.launcher.settings.Defaults
 import com.lf.launcher.settings.Keys
@@ -777,6 +780,40 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         // 点封面或歌名打开播放器，和原版「点击打开音乐」一致
         root.findViewById<View>(R.id.album_cover)?.setOnClickListener { openMusicApp() }
         root.findViewById<View>(R.id.music_title)?.setOnClickListener { openMusicApp() }
+
+        // 整卡的手势：单击打开播放器（原行为），双击静默拉起（界面不抢前台）
+        setupMusicCardGestures(root)
+    }
+
+    /**
+     * 音乐卡手势。
+     *
+     * 单击走 [GestureDetector.onSingleTapConfirmed] —— 必须等 300ms 排除双击，否则双击会先
+     * 触发一次「打开播放器」，静默就白做了。车机上这点延迟基本无感。
+     *
+     * 双击交给 [MusicLauncher]：先试静默拉起（不显示界面），不行才开界面并在 1 秒后自动回来。
+     */
+    private fun setupMusicCardGestures(root: View) {
+        val card = root.findViewById<View>(R.id.music_card) ?: return
+        val detector = GestureDetector(root.context, object : GestureDetector.SimpleOnGestureListener() {
+            // 返回 true 才会继续收到 MOVE/UP，否则 GestureDetector 判不出双击
+            override fun onDown(e: MotionEvent): Boolean = true
+
+            override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+                openMusicApp()
+                return true
+            }
+
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                // 轻闪一下当收到反馈：双击不弹 toast，车里弹字反而吵
+                card.animate().alpha(0.86f).setDuration(70).withEndAction {
+                    card.animate().alpha(1f).setDuration(130).start()
+                }.start()
+                MusicLauncher.onDoubleTap(card, activity)
+                return true
+            }
+        })
+        card.setOnTouchListener { _, ev -> detector.onTouchEvent(ev) }
     }
 
     /**

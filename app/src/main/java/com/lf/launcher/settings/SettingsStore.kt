@@ -95,6 +95,8 @@ object Keys {
     const val MUSIC_LYRIC = "music_lyric"
     const val MUSIC_AUTOSTART = "music_autostart"         // 开机后由桌面拉起 md3Music 续播
     const val MUSIC_MAP_QUIET = "music_map_quiet"         // 拉高德之后空多久才允许拉音乐（毫秒）
+    const val MUSIC_SILENT_FAILS = "music_silent_fails"   // 双击音乐卡「静默拉起」连续失败次数
+    const val MUSIC_SILENT_AT = "music_silent_at"         // 上次静默失败的时间戳，用来过期重试
 
     // 地图：只剩广播控制一条路
     const val MAP_MODE = "map_mode"                       // 已废弃，仅用于清理旧值

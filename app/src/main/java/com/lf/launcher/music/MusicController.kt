@@ -755,6 +755,44 @@ object MusicController {
     val isConnected: Boolean get() = controller != null
 
     /**
+     * 会话是不是**真的**还活着。
+     *
+     * [isConnected] 只看引用非空 —— 音乐 App 被 force-stop 之后 binder 已经断了，
+     * `controller` 却还挂着（断开回调不一定及时），这时按 [isConnected] 判断会得到
+     * "已连接 + 一个很久以前的歌名"，重启播放器的逻辑就被跳过了。
+     * Media3 自己的 `MediaController.isConnected` 才是真实状态。
+     */
+    val isSessionReady: Boolean
+        get() = runCatching { controller?.isConnected == true }.getOrDefault(false)
+
+    /**
+     * 静默拉起：直接 `startService` 它的 Media3 会话服务，**不启动界面**。
+     *
+     * md3Music 的 `MD3MusicMediaSessionService` 是 `exported=true`，且带
+     * `androidx.media3.session.MediaSessionService` 的 intent-filter，
+     * 所以我们能用显式 ComponentName 把它叫起来，桌面不会被它的界面盖住。
+     *
+     * 能不能真正建出可播放的会话，取决于它服务自己的实现（有的播放器把「恢复上次队列」
+     * 放在界面 onCreate 里），所以**必须**由调用方稍后复查 [isConnected]，
+     * 连不上就退回到「开界面 + 稍后回桌面」。
+     *
+     * @return 是否成功把启动意图发出去（不代表会话已经建好）
+     */
+    fun startSilently(ctx: Context): Boolean {
+        if (controller != null) return true
+        val app = ctx.applicationContext
+        return runCatching {
+            val intent = Intent().setComponent(ComponentName(MD3_PKG, MD3_SERVICE))
+            val started = app.startService(intent)
+            FlowLog.i(TAG, "静默拉起 md3Music 会话服务：${started != null}")
+            started != null
+        }.onFailure {
+            // 后台启动限制（Android 8+）、服务被禁用、包被卸载都会走到这里
+            FlowLog.w(TAG, "静默拉起失败（将退回打开界面）：$it")
+        }.getOrDefault(false)
+    }
+
+    /**
      * 开机自启：把 md3Music 的界面拉起来，让它续播上次队列。
      *
      * 只负责"拉起界面"这一件事——它一旦被拉起就会自己建队列并开始播放
