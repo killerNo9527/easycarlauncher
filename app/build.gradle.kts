@@ -12,8 +12,8 @@ android {
         minSdk = 28
         // 车机 Android 9：targetSdk 停在 28，可避开后台启动限制与分区存储
         targetSdk = 28
-        versionCode = 66
-        versionName = "0.9.55-m66"
+        versionCode = 71
+        versionName = "0.9.60-m71"
 
         // 车机上只会有中文界面。不裁的话 appcompat 会带 80 多种语言的字符串
         resConfigs("zh")

@@ -26,7 +26,6 @@ import androidx.constraintlayout.widget.ConstraintSet
 import androidx.fragment.app.Fragment
 import com.lf.launcher.R
 import com.lf.launcher.LauncherActivity
-import com.lf.launcher.map.AmapNavGuard
 import com.lf.launcher.map.AmapPlusController
 import com.lf.launcher.map.MapMaskOverlay
 import com.lf.launcher.lyric.LyricTimeline
@@ -446,23 +445,6 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         }
     }
 
-    /**
-     * 让高德把悬浮窗重排一次。
-     *
-     * 起因：高德**刚进入导航那一帧**会把视口算错——自车不居中、画面右侧被裁、缩放偏大。
-     * 手动点一次「全览」等它自己返回就恢复正常，说明它有正确计算的能力，只是那个
-     * 转换点没重算。这里在导航刚开始时把窗口抖一下（加宽 3px 再改回），逼它走一遍
-     * 布局，效果和「全览→返回」等价，但用户不用手动操作。
-     *
-     * 不做时也安全：没显示悬浮窗（进全屏导航、桌面不可见）时直接返回。
-     */
-    private fun nudgeMapWindow() {
-        if (!SettingsStore.getBool(Keys.AMAP_NAV_NUDGE, Defaults.AMAP_NAV_NUDGE)) return
-        if (!LauncherWindowState.isHomeVisible) return
-        val rect = AmapPlusController.currentRect() ?: return
-        AmapPlusController.nudge(requireContext().applicationContext, rect)
-    }
-
     private fun mapRect(host: View): Rect {
         val loc = IntArray(2)
         host.getLocationOnScreen(loc)
@@ -594,10 +576,6 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         handler.postDelayed(weatherTick, WEATHER_REFRESH_MS)
         // 从系统授权页返回时没有回调，只能在这里重新读一次权限并挂载
         mapHost?.post { syncMapCard() }
-        // 高德一进入导航就把视口算错，这里等着它开口（发 10001）再抖一下窗口
-        val ctx = context ?: return
-        AmapNavGuard.onNavStart = { nudgeMapWindow() }
-        AmapNavGuard.start(ctx)
     }
 
     override fun onPause() {
@@ -605,8 +583,6 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         handler.removeCallbacks(tick)
         handler.removeCallbacks(musicTick)
         handler.removeCallbacks(weatherTick)
-        AmapNavGuard.onNavStart = null
-        context?.let { AmapNavGuard.stop(it) }
     }
 
     override fun onDestroyView() {
